@@ -26,11 +26,17 @@ export const SPACING = 300;      // distanza orizzontale fra coppie di tronchi
 
 // La salita della difficoltà è volutamente lunga: il gioco deve restare
 // leggibile per un bel po' di punti, non trasformarsi in un muro dopo mezzo
-// minuto. I plateau arrivano intorno al punto 42 (velocità) e al tronco 48
-// (varco), invece che al 30 e al 37 come nella prima taratura.
+// minuto.
+//
+// Il varco segue lo stesso schema della velocità: una rampa leggibile fino a
+// 175 (intorno al tronco 44), poi una stretta lentissima fino a 160, raggiunta
+// solo oltre i 150 tronchi. Se si fermasse del tutto, chi arriva lontano
+// giocherebbe un livello identico all'infinito.
 export const GAP_START = 250;
-export const GAP_MIN = 168;
-export const GAP_STEP = 1.7;     // per tronco
+export const GAP_STEP = 1.7;      // per tronco, nella prima rampa
+export const GAP_KNEE = 175;      // dove la rampa si spiana
+export const GAP_MIN = 160;
+export const GAP_TOP_TRUNK = 150; // tronco in cui si tocca il minimo
 
 // La velocità sale in due tempi. Prima una rampa leggibile fino a 330 (intorno
 // al punto 30), poi una salita quasi impercettibile fino a 370, raggiunto solo
@@ -69,8 +75,13 @@ export function maxGapShift(score) {
   return CLIMB_RATE * (SPACING / speedForScore(score)) * SHIFT_MARGIN;
 }
 
+// Tronco in cui finisce la prima rampa del varco (~44).
+export const GAP_KNEE_TRUNK = (GAP_START - GAP_KNEE) / GAP_STEP;
+
 export function gapForScore(score) {
-  return Math.max(GAP_MIN, GAP_START - score * GAP_STEP);
+  if (score <= GAP_KNEE_TRUNK) return GAP_START - score * GAP_STEP;
+  const t = Math.min(1, (score - GAP_KNEE_TRUNK) / (GAP_TOP_TRUNK - GAP_KNEE_TRUNK));
+  return GAP_KNEE - (GAP_KNEE - GAP_MIN) * t;
 }
 
 // Punteggio in cui finisce la prima rampa (~30).

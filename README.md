@@ -138,14 +138,21 @@ impercettibile che arriva al tetto solo oltre i 150 tronchi:
 | velocità | 235 | 299 | **330** | 337 | 353 | **370** |
 | tempo fra due tronchi | 1,28 s | 1,00 s | 0,91 s | 0,89 s | 0,85 s | 0,81 s |
 
-Il varco intanto si stringe da 250 a 168 unità (−1,7 per tronco) e si ferma al
-tronco 48.
+**Il varco segue lo stesso schema**, per lo stesso motivo:
 
-Perché così: la partita normale resta sempre nella fascia leggibile intorno ai 330,
-mentre chi arriva molto lontano trova comunque qualcosa che si stringe, invece di un
-livello identico all'infinito. E il tetto è voluto: con l'accelerazione senza fine
-tutti muoiono più o meno allo stesso punteggio e la classifica misurerebbe solo i
-millisecondi di reazione.
+| tronchi | 0 | 20 | 30 | **44** | 60 | 100 | **150+** |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| varco | 250 | 216 | 199 | **175** | 173 | 167 | **160** |
+| spazio utile | 149 | 115 | 98 | 74 | 72 | 66 | 59 |
+
+("spazio utile" è il varco meno la hitbox dell'ape e meno il rimbalzo di un battito
+d'ali: è il margine di manovra che resta davvero.)
+
+Perché entrambe le curve sono spezzate così: la partita normale resta sempre nella
+fascia leggibile, mentre chi arriva molto lontano trova comunque qualcosa che si
+stringe, invece di un livello identico all'infinito. E i tetti sono voluti: con la
+difficoltà che sale senza fine tutti muoiono più o meno allo stesso punteggio e la
+classifica misurerebbe solo i millisecondi di reazione.
 
 Un bot competente chiude fra i 109 e i 491 punti, con partite da 1,7 a 7 minuti.
 
@@ -162,9 +169,16 @@ davvero, ricavata dalla fisica (impulso e gravità), quindi il limite si adatta 
 ritocchi il volo. Salire costa più che scendere, per cui il limite verso il basso è più
 generoso (`FALL_BONUS`): la varietà dei tracciati resta.
 
-`npm run test:fairness` controlla 2800 tronchi e **fallisce** se una coppia richiede più
-dell'80% della salita possibile. Se ritocchi `GRAVITY`, `FLAP_V`, `SPEED_MAX` o
-`SPACING`, eseguilo: è lì per questo.
+`npm run test:fairness` controlla due invarianti su 2800 tronchi e **fallisce** (exit
+code 1, verificato) se uno dei due cade:
+
+1. nessuna coppia di tronchi richiede più dell'80% della salita possibile;
+2. il varco più stretto lascia almeno 40 unità di manovra dopo aver sottratto la
+   hitbox dell'ape e il rimbalzo di un battito d'ali — un `GAP_MIN` troppo basso
+   renderebbe il finale ingiocabile a prescindere dall'abilità.
+
+Se ritocchi `GRAVITY`, `FLAP_V`, `SPEED_MAX`, `SPACING` o `GAP_MIN`, eseguilo: è lì
+per questo.
 
 ### L'altro vincolo da ricordare
 

@@ -46,14 +46,42 @@ for (const seed of SEEDS) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Secondo invariante: dentro il varco ci deve stare l'ape con il suo rimbalzo.
+// Un battito d'ali fa risalire RISE unità e non si può frenare a metà: se il
+// varco non lascia almeno questo spazio piu' un margine, il finale diventa
+// ingiocabile a prescindere dall'abilità.
+const RISE = K.FLAP_V * K.FLAP_V / (2 * K.GRAVITY);
+const MARGINE_MINIMO = 40;
+let varcoStretto = null;
+for (let n = 0; n <= 400; n++) {
+  const utile = K.gapForScore(n) - 2 * K.BEE_R - RISE;
+  if (utile < MARGINE_MINIMO) {
+    varcoStretto = { tronco: n, varco: Math.round(K.gapForScore(n)), utile: Math.round(utile) };
+    break;
+  }
+}
+const utileFinale = K.gapForScore(400) - 2 * K.BEE_R - RISE;
+console.log(`rimbalzo di un battito: ${RISE.toFixed(0)} unità, hitbox ${2 * K.BEE_R}`);
+console.log(`spazio utile nel varco più stretto: ${utileFinale.toFixed(0)} unità ` +
+            `(minimo accettato: ${MARGINE_MINIMO})`);
+
 console.log(`tronchi controllati: ${SEEDS.length * TRONCHI}`);
 console.log(`caso peggiore: seed ${peggiore.seed}, tronco ${peggiore.tronco} -> ` +
             `richiede ${peggiore.salita} unità di salita su ${peggiore.budget} disponibili ` +
             `(${(peggiore.rapporto * 100).toFixed(0)}% del possibile)`);
+
+if (varcoStretto) {
+  console.error(`\nFALLITO: al tronco ${varcoStretto.tronco} il varco è ${varcoStretto.varco} e ` +
+                `lascia solo ${varcoStretto.utile} unità utili.`);
+  console.error('Alza GAP_MIN in js/constants.js, oppure riduci FLAP_V (rimbalzo più corto).');
+  process.exit(1);
+}
 
 if (bocciati > 0) {
   console.error(`\nFALLITO: ${bocciati} coppie richiedono più dell'80% della salita possibile.`);
   console.error('Abbassa SHIFT_MARGIN in js/constants.js, oppure rendi il volo più agile.');
   process.exit(1);
 }
-console.log('\nOK: ogni coppia di tronchi resta entro l\'80% di quello che l\'ape può fare.');
+console.log('\nOK: ogni coppia di tronchi resta entro l\'80% della salita possibile,');
+console.log('    e nel varco più stretto l\'ape ci passa con il suo rimbalzo.');
