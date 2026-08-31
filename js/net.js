@@ -28,8 +28,6 @@ export const state = {
   lastError: null,
 };
 
-let sb = null;
-
 export const NICK_RE = /^[a-zA-Z0-9._-]{3,16}$/;
 
 export const PIN_MIN = 4;
@@ -134,13 +132,25 @@ function emailFor(nick) {
   return `${nick.trim().toLowerCase()}@${NICK_DOMAIN}`;
 }
 
-async function client() {
-  if (sb) return sb;
-  const mod = await import('https://esm.sh/@supabase/supabase-js@2.45.4');
-  sb = mod.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
-  });
-  return sb;
+// Memorizziamo la PROMESSA, non il risultato. Con `if (sb) return sb` due
+// chiamate ravvicinate (init e una query, per esempio) partono entrambe prima
+// che la prima finisca e creano due client: Supabase avverte di "Multiple
+// GoTrueClient instances", e due client che rinnovano lo stesso token possono
+// invalidarsi a vicenda facendo perdere la sessione.
+let sbPromise = null;
+
+function client() {
+  if (!sbPromise) {
+    sbPromise = (async () => {
+      // @2 e non una versione fissata: le chiavi pubbliche nuove
+      // (sb_publishable_...) hanno bisogno di un client recente.
+      const mod = await import('https://esm.sh/@supabase/supabase-js@2');
+      return mod.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
+      });
+    })();
+  }
+  return sbPromise;
 }
 
 function human(err) {
@@ -182,8 +192,13 @@ async function doInit() {
   try {
     const c = await client();
     state.connected = true;
-    const { data } = await c.auth.getSession();
-    if (data && data.session) await loadProfile(data.session.user.id);
+    const { data, error } = await c.auth.getSession();
+    if (error) {
+      // token di rinnovo non più valido: si riparte da utente non collegato
+      await signOut();
+    } else if (data && data.session) {
+      await loadProfile(data.session.user.id);
+    }
   } catch (e) {
     state.online = false;
     state.lastError = human(e);
@@ -193,11 +208,23 @@ async function doInit() {
 
 async function loadProfile(userId) {
   const c = await client();
+  // maybeSingle e non single: quando la riga non c'è, single risponde 406 e
+  // riempie la console di errori invece di dire semplicemente "nessun profilo".
   const [{ data: prof }, { data: sc }] = await Promise.all([
-    c.from('profiles').select('nickname').eq('id', userId).single(),
+    c.from('profiles').select('nickname').eq('id', userId).maybeSingle(),
     c.from('scores').select('best_score').eq('user_id', userId).maybeSingle(),
   ]);
-  state.user = { id: userId, nickname: prof ? prof.nickname : '?' };
+
+  // Nessun profilo leggibile: la sessione salvata punta a un utente che non
+  // esiste più (cancellato dal pannello) o a un token non più valido. Meglio
+  // ripartire da zero che restare con un utente fantasma, che sembrerebbe
+  // collegato ma non potrebbe inviare nessun punteggio.
+  if (!prof) {
+    await signOut();
+    return null;
+  }
+
+  state.user = { id: userId, nickname: prof.nickname };
   // Per chi è collegato il record è quello del server, non quello locale: il
   // locale è una copia di comodo e può contenere un punteggio che il server ha
   // scartato. Se resta indietro un punteggio guadagnato davvero, è la UI a
@@ -282,7 +309,7 @@ export async function signIn(nick, pin) {
 
 export async function signOut() {
   try {
-    if (sb) await sb.auth.signOut();
+    if (sbPromise) await (await client()).auth.signOut();
   } catch (e) { /* ignora */ }
   state.user = null;
   state.best = localBest();

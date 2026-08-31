@@ -1,0 +1,55 @@
+# ============================================================================
+#  Beeppy — regole per il server (Apache / Hostinger)
+#
+#  Perché questo file esiste: Hostinger serve js e css con
+#  "Cache-Control: public, max-age=604800", cioè sette giorni, mentre index.html
+#  non ha Cache-Control e viene rivalidato a ogni visita. Per un sito statico a
+#  moduli ES è una trappola: dopo una pubblicazione il browser prende l'HTML
+#  nuovo e continua a eseguire il JavaScript vecchio per una settimana. Il
+#  risultato è un'app mezza aggiornata che si comporta in un modo che non esiste
+#  in nessuna versione — nel caso reale, una pagina nera, perché il vecchio
+#  ui.js cercava un elemento che l'HTML nuovo non ha più.
+#
+#  Qui il codice viene sempre rivalidato (con ETag la risposta è un 304, quindi
+#  costa pochi byte), mentre le immagini restano in cache a lungo: cambiano di
+#  rado e pesano.
+# ============================================================================
+
+<IfModule mod_headers.c>
+  # codice e configurazione: sempre rivalidati
+  <FilesMatch "\.(html|js|mjs|css|webmanifest|json)$">
+    Header set Cache-Control "no-cache, must-revalidate"
+    Header unset Expires
+    Header unset Pragma
+  </FilesMatch>
+
+  # il service worker non deve MAI arrivare dalla cache, altrimenti resta al
+  # comando una versione vecchia e nessun aggiornamento riesce a passare
+  <Files "sw.js">
+    Header set Cache-Control "no-store, no-cache, must-revalidate"
+    Header unset Expires
+  </Files>
+
+  # immagini, icone e schermate di avvio: cambiano di rado
+  <FilesMatch "\.(png|svg|jpe?g|webp|gif|ico|woff2?)$">
+    Header set Cache-Control "public, max-age=604800"
+  </FilesMatch>
+</IfModule>
+
+# Tipi MIME: senza questi alcuni host servono i moduli ES come text/plain
+# (e il browser rifiuta di eseguirli) o il manifest con il tipo sbagliato.
+<IfModule mod_mime.c>
+  AddType text/javascript .js .mjs
+  AddType application/manifest+json .webmanifest
+  AddType image/svg+xml .svg
+</IfModule>
+
+# Compressione: il gioco è tutto testo, si comprime bene
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css text/javascript application/javascript image/svg+xml application/manifest+json
+</IfModule>
+
+# Nessuna riscrittura verso index.html: il gioco è una pagina sola e non ha
+# indirizzi interni. Se un file manca deve rispondere 404, non l'HTML della
+# pagina: un modulo mancante servito come HTML darebbe un errore di tipo MIME
+# incomprensibile invece di un chiaro "non trovato".

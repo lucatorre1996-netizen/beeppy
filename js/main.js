@@ -21,6 +21,9 @@ initUI(game);
 // utile per ispezionare lo stato dalla console del browser
 window.beeppy = { game, renderer, net };
 
+// dice alla rete di sicurezza in index.html che l'avvio è riuscito
+if (window.beeppyAvviato) window.beeppyAvviato();
+
 // ------------------------------------------------------------ ciclo di gioco
 let last = performance.now();
 let loggedError = false;

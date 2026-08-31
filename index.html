@@ -198,6 +198,71 @@
   </div>
 </div>
 
+<!-- Schermata di riparazione: compare solo se l'avvio non riesce. -->
+<div id="boot-error" class="boot-error hidden">
+  <div class="boot-card">
+    <h2>Beeppy non si è avviato</h2>
+    <p>Il browser sta usando una versione vecchia dei file del gioco.
+       Questo pulsante li riscarica e riapre la pagina.</p>
+    <button id="boot-fix" class="btn btn-primary" type="button">Aggiorna e riprova</button>
+    <p id="boot-detail" class="boot-detail"></p>
+  </div>
+</div>
+
+<script>
+// Rete di sicurezza all'avvio, in JavaScript classico: gira anche quando i
+// moduli ES non partono. Se il gioco non si avvia, chi apre la pagina deve
+// vedere un messaggio e un modo per rimediare, non uno schermo nero.
+// È già servita per davvero: Hostinger serviva il codice con sette giorni di
+// cache, quindi dopo una pubblicazione il browser eseguiva l'HTML nuovo con il
+// JavaScript vecchio.
+(function () {
+  var avviato = false;
+  var codice = ['index.html', 'styles.css', 'js/main.js', 'js/game.js', 'js/sim.js',
+    'js/render.js', 'js/palette.js', 'js/constants.js', 'js/audio.js', 'js/ui.js',
+    'js/net.js', 'js/rng.js', 'js/config.js', 'js/install.js', 'js/biometric.js'];
+
+  window.beeppyAvviato = function () { avviato = true; };
+
+  function mostra(dettaglio) {
+    if (avviato) return;
+    var box = document.getElementById('boot-error');
+    if (!box || !box.classList.contains('hidden')) return;
+    var d = document.getElementById('boot-detail');
+    if (d && dettaglio) d.textContent = dettaglio;
+    box.classList.remove('hidden');
+  }
+
+  window.addEventListener('error', function (e) { mostra(e && e.message); });
+  // se in sei secondi non è partito nulla, qualcosa è andato storto in silenzio
+  setTimeout(function () { mostra('Avvio non completato.'); }, 6000);
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var btn = document.getElementById('boot-fix');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+      btn.disabled = true;
+      btn.textContent = 'Aggiorno...';
+      // cache: 'reload' scarica dalla rete ignorando la cache E aggiorna la
+      // copia salvata, che è esattamente ciò che serve qui.
+      var lavori = codice.map(function (f) {
+        return fetch(f, { cache: 'reload' }).catch(function () {});
+      });
+      if ('serviceWorker' in navigator) {
+        lavori.push(navigator.serviceWorker.getRegistrations().then(function (rs) {
+          return Promise.all(rs.map(function (r) { return r.unregister(); }));
+        }).catch(function () {}));
+      }
+      if (window.caches) {
+        lavori.push(caches.keys().then(function (ks) {
+          return Promise.all(ks.map(function (n) { return caches.delete(n); }));
+        }).catch(function () {}));
+      }
+      Promise.all(lavori).then(function () { location.reload(); });
+    });
+  });
+})();
+</script>
 <script type="module" src="js/main.js"></script>
 </body>
 </html>
