@@ -83,7 +83,24 @@ Valori attuali: un giocatore discreto arriva fra i 15 e i 60 punti. Il varco si 
 da 250 a 168 unità e la velocità sale da 235 a 400 al crescere del punteggio
 (vedi `js/constants.js`).
 
-## Deploy
+## Deploy su Hostinger
 
-Il progetto è un sito statico: basta pubblicare la cartella così com'è.
-Su Hostinger, collega il repository Git al dominio; non serve nessun comando di build.
+Il progetto è un sito statico puro: non c'è nessun comando di build da eseguire,
+la cartella va pubblicata così com'è.
+
+1. hPanel → **Avanzate → GIT**.
+2. Repository: `https://github.com/lucatorre1996-netizen/beeppy.git`, branch `main`,
+   directory di installazione: la cartella pubblica del dominio (di norma
+   `public_html`, oppure la sottocartella del sottodominio).
+3. **Deploy**. Per gli aggiornamenti successivi basta *Deploy* di nuovo, oppure
+   configura il webhook che Hostinger fornisce e aggiungilo su GitHub
+   (Settings → Webhooks) per pubblicare a ogni push.
+
+Due cose a cui fare attenzione:
+
+- **Serve HTTPS.** Il service worker (e quindi l'installazione come app) funziona
+  solo su HTTPS o su `localhost`: attiva il certificato SSL del dominio.
+- **Cache del service worker.** Dopo un aggiornamento, chi ha già aperto il gioco
+  potrebbe vedere la versione vecchia finché il service worker non si rinnova. Se
+  cambi i file, alza il numero di versione in [`sw.js`](sw.js) (`const CACHE =
+  'beeppy-v1'` → `v2`): la cache vecchia viene buttata all'attivazione.
