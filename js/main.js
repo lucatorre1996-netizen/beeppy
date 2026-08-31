@@ -64,6 +64,18 @@ document.addEventListener('visibilitychange', () => {
 document.addEventListener('gesturestart', (e) => e.preventDefault());
 document.addEventListener('dblclick', (e) => e.preventDefault());
 
+// Il menu contestuale (tocco tenuto premuto su mobile, tasto destro su
+// desktop) non deve comparire sopra la partita. Nei campi di testo resta,
+// altrimenti si perderebbe incolla e correzione.
+document.addEventListener('contextmenu', (e) => {
+  if (!e.target.closest('input, textarea')) e.preventDefault();
+});
+
+// iOS: un tocco prolungato che parte dal canvas non deve avviare una selezione
+document.addEventListener('selectstart', (e) => {
+  if (!e.target.closest('input, textarea')) e.preventDefault();
+});
+
 // aggiorna la classifica del menu quando la rete è pronta
 document.addEventListener('beeppy:net-ready', () => {
   import('./ui.js').then((m) => {

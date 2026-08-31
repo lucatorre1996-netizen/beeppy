@@ -42,7 +42,7 @@ export function initUI(g) {
   });
   $('btn-leaderboard').addEventListener('click', openLeaderboard);
   $('btn-lb2').addEventListener('click', openLeaderboard);
-  $('btn-account').addEventListener('click', () => openAuth());
+  $('btn-account').addEventListener('click', () => openAuth(null, modoPredefinito()));
   $('btn-signout').addEventListener('click', async () => {
     await net.signOut();
     ultimoPin = null;
@@ -115,7 +115,8 @@ async function startGame() {
   await net.whenReady();
   if (net.serveAccount() && !net.state.user) {
     volevaGiocare = true;
-    openAuth('Registrati per giocare');
+    openAuth(giaConosciuto() ? 'Accedi per giocare' : 'Registrati per giocare',
+             modoPredefinito());
     return;
   }
   closeModal('modal-lb');
@@ -230,7 +231,7 @@ function escapeHtml(s) {
 }
 
 // ------------------------------------------------------------------ account
-function openAuth(titolo) {
+function openAuth(titolo, modo) {
   openModal('modal-auth');
   authOpenedAt = Date.now();
   const logged = Boolean(net.state.user);
@@ -247,8 +248,11 @@ function openAuth(titolo) {
     $('auth-title').textContent = 'Classifica non configurata';
   } else {
     $('auth-title').textContent = titolo || 'Entra in classifica';
-    if (titolo) authMode = 'signup';
+    authMode = modo || modoPredefinito();
     setAuthMode(authMode);
+    // il nickname di chi ha già giocato qui è un attrito in meno
+    const noto = giaConosciuto();
+    if (noto && !$('f-nick').value) $('f-nick').value = noto;
   }
   syncBiometria(logged);
 }
@@ -378,6 +382,18 @@ async function submitAuth(e) {
   btn.disabled = false;
   setAuthMode(authMode);
   if (!out.ok) {
+    // Caso tipico del dispositivo nuovo: uno è già registrato ma qui non lo
+    // sappiamo, quindi gli abbiamo proposto la registrazione. "Nickname già
+    // preso" non è un vicolo cieco: è la prova che l'account esiste, quindi
+    // passiamo all'accesso tenendogli il nickname che ha appena scritto.
+    if (authMode === 'signup' && /gi.\s*preso/i.test(out.error)) {
+      setAuthMode('login');
+      err.textContent = 'Questo nickname esiste già: inserisci il PIN per accedere.';
+      err.classList.remove('hidden');
+      $('f-pass').value = '';
+      $('f-pass').focus();
+      return;
+    }
     err.textContent = out.error;
     err.classList.remove('hidden');
     return;
@@ -392,6 +408,17 @@ async function submitAuth(e) {
     lastResult = null;
     net.submitScore(r).then(() => refreshMenu());
   }
+}
+
+// Chi ha già giocato su questo dispositivo lascia il nickname in memoria: a lui
+// va proposto l'accesso, non la registrazione. Proporre "Registrati" a chi ha
+// già un account lo manda a sbattere contro "nickname già preso".
+function giaConosciuto() {
+  return net.localNick();
+}
+
+function modoPredefinito() {
+  return giaConosciuto() ? 'login' : 'signup';
 }
 
 function dopoAccesso() {
@@ -414,8 +441,12 @@ function syncAccountChip() {
 
 function syncLoginNote() {
   const serve = net.serveAccount() && !net.state.user;
+  const noto = giaConosciuto();
   $('login-note').classList.toggle('hidden', !serve);
-  $('btn-play').textContent = serve ? 'Registrati e gioca' : 'Gioca';
+  $('login-note').textContent = noto
+    ? `Bentornato: accedi come ${noto} per giocare e tornare in classifica.`
+    : 'Per giocare serve un account: il nickname è il nome che finisce in classifica.';
+  $('btn-play').textContent = serve ? (noto ? 'Accedi e gioca' : 'Registrati e gioca') : 'Gioca';
 }
 
 async function refreshMenu() {

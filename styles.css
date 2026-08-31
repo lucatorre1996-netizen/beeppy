@@ -17,6 +17,24 @@
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
+/* Su iOS un tocco tenuto premuto seleziona la pagina e apre il menu
+   "Copia / Cerca info / Traduci" sopra il gioco: durante una partita è
+   esattamente il gesto sbagliato nel momento sbagliato. Queste due proprietà lo
+   impediscono; i campi di testo si riattivano più sotto, altrimenti diventerebbe
+   impossibile correggere il nickname. */
+html, body, #app, #game, #tap-layer, .screen, .install-hint {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* niente trascinamento delle immagini con il dito o col mouse */
+img {
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
 html, body {
   margin: 0;
   height: 100%;
@@ -341,6 +359,12 @@ code {
   font: inherit;
   font-size: 17px;
   color: var(--ink);
+}
+#auth-form input {
+  /* qui la selezione serve: senza, non si può correggere ciò che si è scritto */
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
 }
 #auth-form input:focus { outline: none; border-color: var(--honey); }
 #f-pass { letter-spacing: 6px; font-size: 20px; }
