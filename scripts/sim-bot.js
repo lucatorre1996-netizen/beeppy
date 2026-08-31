@@ -18,7 +18,9 @@ function play(seed, slop = 0) {
     sim.step();
     t++;
   }
-  return { punti: sim.score, secondi: +(t / 120).toFixed(1), tapAlSec: +(sim.flaps / (t / 120)).toFixed(1) };
+  const out = { punti: sim.score, secondi: +(t / 120).toFixed(1), tapAlSec: +(sim.flaps / (t / 120)).toFixed(1) };
+  if (t >= maxT) out.nota = 'STOP DI SICUREZZA: era ancora vivo';
+  return out;
 }
 
 console.log('--- riflessi precisi ---');

@@ -130,20 +130,24 @@ node scripts/sim-bot.js      # un bot gioca da solo: quanti punti fa?
 
 La difficoltà cresce così, e poi **si ferma** (vedi `js/constants.js`):
 
-| | inizio | fine | plateau |
-| --- | --- | --- | --- |
-| velocità | 235 | 370 (+3,2 per punto) | punto 42 |
-| varco | 250 | 168 (−1,7 per tronco) | tronco 48 |
-| tempo fra due tronchi | 1,28 s | 0,81 s | |
+**La velocità sale in due tempi.** Prima una rampa leggibile, poi una salita quasi
+impercettibile che arriva al tetto solo oltre i 150 tronchi:
 
-Il tetto è voluto: con l'accelerazione infinita tutti muoiono più o meno allo stesso
-punteggio e la classifica misura solo i millisecondi di reazione. Con il plateau il
-punteggio cresce quanto regge la concentrazione. Un bot competente chiude fra i 49 e i
-234 punti.
+| punti | 0 | 20 | 30 | 50 | 100 | 150+ |
+| --- | --- | --- | --- | --- | --- | --- |
+| velocità | 235 | 299 | **330** | 337 | 353 | **370** |
+| tempo fra due tronchi | 1,28 s | 1,00 s | 0,91 s | 0,89 s | 0,85 s | 0,81 s |
 
-La salita è anche volutamente lunga: quasi tutte le partite si giocano *dentro* la
-rampa, quindi la difficoltà continua a crescere finché si resta in volo, invece di
-esaurirsi in mezzo minuto.
+Il varco intanto si stringe da 250 a 168 unità (−1,7 per tronco) e si ferma al
+tronco 48.
+
+Perché così: la partita normale resta sempre nella fascia leggibile intorno ai 330,
+mentre chi arriva molto lontano trova comunque qualcosa che si stringe, invece di un
+livello identico all'infinito. E il tetto è voluto: con l'accelerazione senza fine
+tutti muoiono più o meno allo stesso punteggio e la classifica misurerebbe solo i
+millisecondi di reazione.
+
+Un bot competente chiude fra i 109 e i 491 punti, con partite da 1,7 a 7 minuti.
 
 ### La regola di equità
 
@@ -165,7 +169,8 @@ dell'80% della salita possibile. Se ritocchi `GRAVITY`, `FLAP_V`, `SPEED_MAX` o
 ### L'altro vincolo da ricordare
 
 La soglia anti-cheat in `submit_score()` pretende almeno 0,7 s di gioco per punto,
-mentre alla velocità massima un punto richiede 300/370 = 0,81 s: il margine è del 16%.
+mentre alla velocità massima un punto richiede 300/370 = 0,81 s: il margine è del 16%
+nel caso peggiore (e del 30% nella fascia dei 330, dove si gioca quasi sempre).
 Se alzi `SPEED_MAX` o abbassi `SPACING`, ricontrolla quel rapporto e abbassa la soglia
 di conseguenza, altrimenti i punteggi legittimi dei giocatori più bravi verrebbero
 rifiutati.

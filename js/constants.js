@@ -32,12 +32,19 @@ export const GAP_START = 250;
 export const GAP_MIN = 168;
 export const GAP_STEP = 1.7;     // per tronco
 
+// La velocità sale in due tempi. Prima una rampa leggibile fino a 330 (intorno
+// al punto 30), poi una salita quasi impercettibile fino a 370, raggiunto solo
+// oltre i 150 tronchi. Così la partita "normale" resta sempre nella fascia
+// giocabile, e chi arriva molto lontano trova comunque qualcosa che si stringe
+// invece di un livello identico all'infinito.
 export const SPEED_START = 235;
-// Il tetto della velocità non è solo una scelta di gioco: da esso dipende il
-// tempo minimo per punto (SPACING/SPEED_MAX = 0,81 s), che deve restare
-// comodamente sopra la soglia di plausibilità di submit_score() (0,7 s).
+export const SPEED_STEP = 3.2;        // per punto, nella prima rampa
+export const SPEED_KNEE = 330;        // dove la rampa si spiana
+// Il tetto non è solo una scelta di gioco: da esso dipende il tempo minimo per
+// punto (SPACING/SPEED_MAX = 0,81 s), che deve restare comodamente sopra la
+// soglia di plausibilità di submit_score() (0,7 s).
 export const SPEED_MAX = 370;
-export const SPEED_STEP = 3.2;   // per punto
+export const SPEED_TOP_SCORE = 150;   // punteggio a cui si toccano i 370
 
 export const GAP_MARGIN_TOP = 80;    // il varco non si incolla ai bordi
 export const GAP_MARGIN_BOTTOM = 40; // rispetto al terreno
@@ -66,6 +73,11 @@ export function gapForScore(score) {
   return Math.max(GAP_MIN, GAP_START - score * GAP_STEP);
 }
 
+// Punteggio in cui finisce la prima rampa (~30).
+export const SPEED_KNEE_SCORE = (SPEED_KNEE - SPEED_START) / SPEED_STEP;
+
 export function speedForScore(score) {
-  return Math.min(SPEED_MAX, SPEED_START + score * SPEED_STEP);
+  if (score <= SPEED_KNEE_SCORE) return SPEED_START + score * SPEED_STEP;
+  const t = Math.min(1, (score - SPEED_KNEE_SCORE) / (SPEED_TOP_SCORE - SPEED_KNEE_SCORE));
+  return SPEED_KNEE + (SPEED_MAX - SPEED_KNEE) * t;
 }
