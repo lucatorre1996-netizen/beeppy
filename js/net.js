@@ -111,6 +111,13 @@ export function setLocalBest(v) {
   if (v > localBest()) localStorage.setItem(LS.best, String(v));
 }
 
+// Allinea il record locale a quello che dice il server, anche verso il basso.
+// Serve perché il valore locale è solo una copia di comodo: l'autorità è il
+// database, e un numero che la classifica non conosce non va mostrato.
+function syncLocalBest(v) {
+  localStorage.setItem(LS.best, String(Math.max(0, v | 0)));
+}
+
 export function localNick() {
   return localStorage.getItem(LS.nick) || '';
 }
@@ -191,8 +198,13 @@ async function loadProfile(userId) {
     c.from('scores').select('best_score').eq('user_id', userId).maybeSingle(),
   ]);
   state.user = { id: userId, nickname: prof ? prof.nickname : '?' };
+  // Per chi è collegato il record è quello del server, non quello locale: il
+  // locale è una copia di comodo e può contenere un punteggio che il server ha
+  // scartato. Se resta indietro un punteggio guadagnato davvero, è la UI a
+  // rimandarlo subito dopo l'accesso.
   const remote = sc ? sc.best_score : 0;
-  state.best = Math.max(remote, localBest());
+  state.best = remote;
+  syncLocalBest(remote);
   if (state.user.nickname) localStorage.setItem(LS.nick, state.user.nickname);
   return state.user;
 }
@@ -277,13 +289,18 @@ export async function signOut() {
 }
 
 // Invia il punteggio. Ritorna sempre qualcosa di utile alla UI, anche offline.
+//
+// Regola: il record mostrato è quello che il server ha accettato. Un punteggio
+// scartato (implausibile, rate limit) non deve diventare il record locale,
+// altrimenti la schermata mostrerebbe un numero che la classifica non conosce —
+// ed è esattamente quello che succedeva prima di questa versione.
 export async function submitScore(res) {
-  const wasRecord = res.score > localBest();
-  setLocalBest(res.score);
+  const eraRecordLocale = res.score > localBest();
 
   if (!ONLINE || !state.user) {
+    setLocalBest(res.score);
     state.best = Math.max(state.best, res.score);
-    return { ok: true, offline: true, best: state.best, isRecord: wasRecord };
+    return { ok: true, offline: true, best: state.best, isRecord: eraRecordLocale };
   }
   try {
     const c = await client();
@@ -294,7 +311,10 @@ export async function submitScore(res) {
     });
     if (error) throw error;
     const row = Array.isArray(data) ? data[0] : data;
-    state.best = Math.max(state.best, row ? row.best : res.score);
+    if (row && Number.isFinite(row.best)) {
+      state.best = row.best;
+      syncLocalBest(row.best);
+    }
     return {
       ok: true,
       best: state.best,
@@ -302,8 +322,11 @@ export async function submitScore(res) {
       reason: row ? row.reason : 'ok',
     };
   } catch (e) {
+    // Rete assente: il punteggio è stato guadagnato davvero, lo teniamo come
+    // provvisorio in attesa di poterlo rimandare.
+    setLocalBest(res.score);
     state.best = Math.max(state.best, res.score);
-    return { ok: false, error: human(e), best: state.best, isRecord: wasRecord };
+    return { ok: false, error: human(e), best: state.best, isRecord: eraRecordLocale };
   }
 }
 
