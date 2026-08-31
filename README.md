@@ -132,14 +132,18 @@ La difficoltà cresce così, e poi **si ferma** (vedi `js/constants.js`):
 
 | | inizio | fine | plateau |
 | --- | --- | --- | --- |
-| velocità | 235 | 400 (+5,5 per punto) | punto 30 |
-| varco | 250 | 168 (−2,2 per tronco) | tronco 37 |
-| tempo fra due tronchi | 1,28 s | 0,75 s | |
+| velocità | 235 | 370 (+3,2 per punto) | punto 42 |
+| varco | 250 | 168 (−1,7 per tronco) | tronco 48 |
+| tempo fra due tronchi | 1,28 s | 0,81 s | |
 
 Il tetto è voluto: con l'accelerazione infinita tutti muoiono più o meno allo stesso
 punteggio e la classifica misura solo i millisecondi di reazione. Con il plateau il
-punteggio cresce quanto regge la concentrazione. Un bot competente chiude fra i 32 e i
-210 punti.
+punteggio cresce quanto regge la concentrazione. Un bot competente chiude fra i 49 e i
+234 punti.
+
+La salita è anche volutamente lunga: quasi tutte le partite si giocano *dentro* la
+rampa, quindi la difficoltà continua a crescere finché si resta in volo, invece di
+esaurirsi in mezzo minuto.
 
 ### La regola di equità
 
@@ -161,9 +165,10 @@ dell'80% della salita possibile. Se ritocchi `GRAVITY`, `FLAP_V`, `SPEED_MAX` o
 ### L'altro vincolo da ricordare
 
 La soglia anti-cheat in `submit_score()` pretende almeno 0,7 s di gioco per punto,
-mentre alla velocità massima un punto richiede 300/400 = 0,75 s: restano solo 7 punti
-percentuali di margine. Se alzi `SPEED_MAX` o abbassi `SPACING`, abbassa anche quella
-soglia, altrimenti i punteggi legittimi dei giocatori più bravi verrebbero rifiutati.
+mentre alla velocità massima un punto richiede 300/370 = 0,81 s: il margine è del 16%.
+Se alzi `SPEED_MAX` o abbassi `SPACING`, ricontrolla quel rapporto e abbassa la soglia
+di conseguenza, altrimenti i punteggi legittimi dei giocatori più bravi verrebbero
+rifiutati.
 
 ## Deploy su Hostinger
 

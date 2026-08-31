@@ -24,13 +24,20 @@ export const BEE_R = 15;         // raggio hitbox (più piccolo dello sprite: pe
 export const TRUNK_W = 88;
 export const SPACING = 300;      // distanza orizzontale fra coppie di tronchi
 
+// La salita della difficoltà è volutamente lunga: il gioco deve restare
+// leggibile per un bel po' di punti, non trasformarsi in un muro dopo mezzo
+// minuto. I plateau arrivano intorno al punto 42 (velocità) e al tronco 48
+// (varco), invece che al 30 e al 37 come nella prima taratura.
 export const GAP_START = 250;
 export const GAP_MIN = 168;
-export const GAP_STEP = 2.2;     // per punto
+export const GAP_STEP = 1.7;     // per tronco
 
 export const SPEED_START = 235;
-export const SPEED_MAX = 400;
-export const SPEED_STEP = 5.5;   // per punto
+// Il tetto della velocità non è solo una scelta di gioco: da esso dipende il
+// tempo minimo per punto (SPACING/SPEED_MAX = 0,81 s), che deve restare
+// comodamente sopra la soglia di plausibilità di submit_score() (0,7 s).
+export const SPEED_MAX = 370;
+export const SPEED_STEP = 3.2;   // per punto
 
 export const GAP_MARGIN_TOP = 80;    // il varco non si incolla ai bordi
 export const GAP_MARGIN_BOTTOM = 40; // rispetto al terreno
