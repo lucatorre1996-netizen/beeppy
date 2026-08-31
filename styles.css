@@ -1,0 +1,333 @@
+/* Beeppy - interfaccia. Mobile-first: tutto pensato per il pollice.
+   Le misure usano px perché il gioco vive dentro un canvas a scala fissa. */
+
+:root {
+  --honey: #ffc542;
+  --honey-dark: #e8a01a;
+  --ink: #2b2118;
+  --ink-soft: rgba(43, 33, 24, 0.66);
+  --panel: rgba(255, 253, 246, 0.985);
+  --panel-line: rgba(43, 33, 24, 0.1);
+  --shadow: 0 12px 34px rgba(23, 16, 8, 0.28);
+  --radius: 22px;
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  font-family: 'Baloo 2', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #14212b;
+  color: var(--ink);
+  font-family: 'Baloo 2', system-ui, -apple-system, sans-serif;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+
+#app {
+  position: fixed;
+  inset: 0;
+  margin: 0 auto;
+  max-width: 560px;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+#game {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+
+/* strato che raccoglie i tap di gioco: sta sopra al canvas ma sotto ai pannelli */
+#tap-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  touch-action: none;
+}
+
+/* --------------------------------------------------------------- barra alta */
+#hud {
+  position: absolute;
+  top: calc(10px + var(--safe-t));
+  left: 12px;
+  right: 12px;
+  z-index: 6;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.chip {
+  pointer-events: auto;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 253, 246, 0.82);
+  backdrop-filter: blur(8px);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  font-size: 15px;
+  box-shadow: 0 4px 14px rgba(23, 16, 8, 0.2);
+  cursor: pointer;
+}
+.chip:active { transform: scale(0.95); }
+body.is-flying #hud { opacity: 0.32; pointer-events: none; }
+#hud { transition: opacity 0.25s ease; }
+.chip-icon { display: inline-flex; align-items: center; justify-content: center; width: 44px; padding: 0; }
+.chip-account { max-width: 58%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ------------------------------------------------------------- schermate */
+.screen {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  padding: calc(66px + var(--safe-t)) 22px calc(26px + var(--safe-b));
+  text-align: center;
+}
+.screen.is-on { display: flex; }
+.screen-ready { pointer-events: none; background: rgba(20, 33, 43, 0.18); }
+
+.logo h1 {
+  margin: 6px 0 2px;
+  font-size: 62px;
+  font-weight: 800;
+  line-height: 1;
+  color: #fffdf6;
+  letter-spacing: -1px;
+  text-shadow: 0 3px 0 var(--honey-dark), 0 10px 26px rgba(0, 0, 0, 0.35);
+}
+.tagline {
+  margin: 0;
+  color: #fffdf6;
+  font-size: 16px;
+  font-weight: 600;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+.logo-bee {
+  display: block;
+  width: 96px;
+  height: 96px;
+  margin: 0 auto;
+  background: url('assets/icon.svg') center/contain no-repeat;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.3));
+  animation: hover 2.4s ease-in-out infinite;
+}
+@keyframes hover {
+  0%, 100% { transform: translateY(-5px) rotate(-4deg); }
+  50%      { transform: translateY(6px) rotate(4deg); }
+}
+
+.stats-row { display: flex; gap: 10px; }
+.stat {
+  min-width: 132px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: rgba(255, 253, 246, 0.86);
+  backdrop-filter: blur(8px);
+  box-shadow: var(--shadow);
+}
+.stat-k { display: block; font-size: 12px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.5px; }
+.stat b { font-size: 30px; font-weight: 800; line-height: 1.1; }
+
+.menu-actions { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 300px; }
+
+.btn {
+  min-height: 54px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 16px;
+  background: rgba(255, 253, 246, 0.92);
+  color: var(--ink);
+  font: inherit;
+  font-size: 19px;
+  font-weight: 700;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: transform 0.08s ease;
+}
+.btn:active { transform: translateY(2px) scale(0.99); }
+.btn-primary {
+  background: linear-gradient(180deg, #ffd569, var(--honey));
+  box-shadow: 0 5px 0 var(--honey-dark), var(--shadow);
+  font-size: 22px;
+  min-height: 60px;
+}
+.btn-ghost {
+  background: transparent;
+  box-shadow: none;
+  color: var(--ink-soft);   /* dentro un pannello chiaro: mai bianco su bianco */
+  font-size: 16px;
+  min-height: 44px;
+  text-decoration: underline;
+}
+
+/* ------------------------------------------------------------ pronti, via */
+.ready-box {
+  padding: 20px 26px;
+  border-radius: var(--radius);
+  background: rgba(20, 33, 43, 0.5);
+  backdrop-filter: blur(4px);
+  color: #fffdf6;
+}
+.ready-box p { margin: 4px 0; font-size: 20px; font-weight: 600; }
+.ready-box .small { font-size: 15px; opacity: 0.85; }
+.tap-icon { font-size: 44px; animation: tap 1.1s ease-in-out infinite; }
+@keyframes tap {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-12px); }
+}
+
+/* --------------------------------------------------------- fine partita */
+#screen-over.is-on { background: rgba(20, 33, 43, 0.32); }
+
+.panel {
+  width: 100%;
+  max-width: 340px;
+  padding: 24px 22px 18px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  backdrop-filter: blur(6px);
+  box-shadow: var(--shadow);
+  position: relative;
+}
+.badge {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-3deg);
+  padding: 6px 16px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffd569, var(--honey));
+  box-shadow: 0 4px 0 var(--honey-dark);
+  font-size: 15px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.panel-k { margin: 0; font-size: 13px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 1px; }
+.big-score { font-size: 76px; font-weight: 800; line-height: 1; margin: 2px 0 12px; }
+.over-rows { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.over-rows > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: rgba(43, 33, 24, 0.05);
+  font-size: 15px;
+  font-weight: 600;
+}
+.over-rows b { font-size: 20px; font-weight: 800; }
+
+.note { margin: 8px 0 0; font-size: 13px; font-weight: 600; color: var(--ink-soft); line-height: 1.35; }
+.screen > .note { color: #fffdf6; text-shadow: 0 1px 6px rgba(0,0,0,0.5); }
+.error { margin: 4px 0 0; padding: 9px 12px; border-radius: 12px; background: #ffe3e0; color: #a3231b; font-size: 14px; font-weight: 700; }
+.hidden { display: none !important; }
+
+/* ------------------------------------------------------------- modali */
+.modal {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+  padding: calc(12px + var(--safe-t)) 12px calc(12px + var(--safe-b));
+  background: rgba(14, 22, 30, 0.55);
+  backdrop-filter: blur(3px);
+}
+.modal.is-on { display: flex; animation: fade 0.18s ease; }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+.modal-card {
+  width: 100%;
+  max-width: 420px;
+  max-height: 88%;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 18px calc(18px + var(--safe-b));
+  border-radius: 26px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  animation: rise 0.22s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+@keyframes rise { from { transform: translateY(26px); } to { transform: translateY(0); } }
+
+.modal-card header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.modal-card h2 { margin: 0; font-size: 22px; font-weight: 800; }
+.x {
+  width: 38px; height: 38px;
+  border: 0; border-radius: 999px;
+  background: rgba(43, 33, 24, 0.07);
+  font-size: 16px; color: var(--ink);
+  cursor: pointer;
+}
+
+.lb { list-style: none; margin: 12px 0 0; padding: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.lb li {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 10px;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 600;
+}
+.lb li:nth-child(odd) { background: rgba(43, 33, 24, 0.045); }
+.lb li.me { background: linear-gradient(90deg, rgba(255,197,66,0.4), rgba(255,197,66,0.12)); box-shadow: inset 0 0 0 2px var(--honey); }
+.lb .pos { font-weight: 800; color: var(--ink-soft); text-align: center; }
+.lb li:nth-child(1) .pos, .lb li:nth-child(2) .pos, .lb li:nth-child(3) .pos { font-size: 20px; color: var(--ink); }
+.lb .nick { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.lb .pts { font-weight: 800; font-size: 18px; }
+/* il messaggio di lista vuota non deve ereditare la griglia delle righe */
+.lb li.lb-empty { display: block; padding: 26px 8px; text-align: center; color: var(--ink-soft); font-weight: 600; line-height: 1.5; background: none; }
+
+.tabs { display: flex; gap: 6px; margin: 14px 0 4px; padding: 4px; border-radius: 14px; background: rgba(43,33,24,0.07); }
+.tab {
+  flex: 1; min-height: 40px;
+  border: 0; border-radius: 10px; background: transparent;
+  font: inherit; font-weight: 700; font-size: 16px; color: var(--ink-soft);
+  cursor: pointer;
+}
+.tab.is-on { background: #fffdf6; color: var(--ink); box-shadow: 0 2px 8px rgba(23,16,8,0.14); }
+
+#auth-form { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+#auth-form label { font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+#auth-form input {
+  min-height: 50px;
+  margin-bottom: 6px;
+  padding: 0 14px;
+  border: 2px solid var(--panel-line);
+  border-radius: 14px;
+  background: #fff;
+  font: inherit;
+  font-size: 17px;
+  color: var(--ink);
+}
+#auth-form input:focus { outline: none; border-color: var(--honey); }
+#auth-form .btn { margin-top: 8px; }
+.logged-as { font-size: 19px; font-weight: 600; margin: 16px 0 12px; }
+
+@media (max-height: 620px) {
+  .logo h1 { font-size: 46px; }
+  .logo-bee { width: 66px; height: 66px; }
+  .big-score { font-size: 58px; }
+  .screen { gap: 14px; }
+}

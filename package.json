@@ -1,0 +1,11 @@
+{
+  "name": "beeppy",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Beeppy - un'ape, dei tronchi, una classifica mondiale",
+  "scripts": {
+    "dev": "node scripts/serve.js",
+    "test:sim": "node scripts/sim-check.js"
+  }
+}

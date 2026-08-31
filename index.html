@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Beeppy - vola fra i tronchi</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#3fb0dd">
+<meta name="description" content="Beeppy: un'ape, dei tronchi e una classifica mondiale. Tocca per volare.">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="game"></canvas>
+  <div id="tap-layer" aria-hidden="true"></div>
+
+  <!-- barra superiore -->
+  <div id="hud">
+    <button id="btn-sound" class="chip chip-icon" title="Audio" aria-label="Attiva o disattiva l'audio">
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+        <path d="M4 9h3l5-4v14l-5-4H4z" fill="currentColor"/>
+        <g id="snd-on" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M16 8.5a5 5 0 0 1 0 7"/><path d="M19 6a9 9 0 0 1 0 12"/>
+        </g>
+        <g id="snd-off" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M16.5 9.5l5 5"/><path d="M21.5 9.5l-5 5"/>
+        </g>
+      </svg>
+    </button>
+    <button id="btn-account" class="chip chip-account">Accedi</button>
+  </div>
+
+  <!-- schermata iniziale -->
+  <section id="screen-menu" class="screen">
+    <div class="logo">
+      <span class="logo-bee" aria-hidden="true"></span>
+      <h1>Beeppy</h1>
+      <p class="tagline">Tocca per volare. Non toccare i tronchi.</p>
+    </div>
+    <div class="stats-row">
+      <div class="stat"><span class="stat-k">Il tuo record</span><b id="menu-best">0</b></div>
+      <div class="stat"><span class="stat-k">Migliore in assoluto</span><b id="menu-top">-</b></div>
+    </div>
+    <div class="menu-actions">
+      <button id="btn-play" class="btn btn-primary">Gioca</button>
+      <button id="btn-leaderboard" class="btn">Classifica</button>
+    </div>
+    <p id="offline-note" class="note hidden">Modalità offline: il record resta su questo dispositivo.</p>
+  </section>
+
+  <!-- pronti, via -->
+  <section id="screen-ready" class="screen screen-ready">
+    <div class="ready-box">
+      <div class="tap-icon" aria-hidden="true">👆</div>
+      <p><b>Tocca</b> per battere le ali</p>
+      <p class="small">Passa <b>in mezzo</b> ai tronchi</p>
+    </div>
+  </section>
+
+  <!-- fine partita -->
+  <section id="screen-over" class="screen">
+    <div class="panel">
+      <div id="record-badge" class="badge hidden">Nuovo record!</div>
+      <p class="panel-k">Punteggio</p>
+      <div id="over-score" class="big-score">0</div>
+      <div class="over-rows">
+        <div><span>Record personale</span><b id="over-best">0</b></div>
+        <div><span>Posizione</span><b id="over-rank">-</b></div>
+      </div>
+      <p id="over-status" class="note"></p>
+      <div class="menu-actions">
+        <button id="btn-again" class="btn btn-primary">Rigioca</button>
+        <button id="btn-lb2" class="btn">Classifica</button>
+      </div>
+      <button id="btn-home" class="btn btn-ghost">Menu</button>
+    </div>
+  </section>
+
+  <!-- classifica -->
+  <div id="modal-lb" class="modal">
+    <div class="modal-card">
+      <header>
+        <h2>Classifica mondiale</h2>
+        <button class="x" data-close="modal-lb" aria-label="Chiudi">✕</button>
+      </header>
+      <ol id="lb-list" class="lb"></ol>
+      <p id="lb-note" class="note"></p>
+    </div>
+  </div>
+
+  <!-- account -->
+  <div id="modal-auth" class="modal">
+    <div class="modal-card">
+      <header>
+        <h2 id="auth-title">Entra in classifica</h2>
+        <button class="x" data-close="modal-auth" aria-label="Chiudi">✕</button>
+      </header>
+
+      <div id="auth-forms">
+        <div class="tabs">
+          <button id="tab-login" class="tab is-on">Accedi</button>
+          <button id="tab-signup" class="tab">Registrati</button>
+        </div>
+        <form id="auth-form" autocomplete="on">
+          <label for="f-nick">Nickname</label>
+          <input id="f-nick" name="username" type="text" inputmode="latin" autocapitalize="none"
+                 autocomplete="username" maxlength="16" placeholder="es. ape_regina" required>
+          <label for="f-pass">Password</label>
+          <input id="f-pass" name="password" type="password" autocomplete="current-password"
+                 minlength="6" placeholder="almeno 6 caratteri" required>
+          <p id="auth-error" class="error hidden"></p>
+          <button id="auth-submit" class="btn btn-primary" type="submit">Accedi</button>
+          <p class="note">Serve solo un nickname: nessuna email, nessuna verifica.
+             Il nickname è il nome che appare in classifica.</p>
+        </form>
+      </div>
+
+      <div id="auth-logged" class="hidden">
+        <p class="logged-as">Sei <b id="auth-nick"></b></p>
+        <div class="over-rows">
+          <div><span>Record</span><b id="auth-best">0</b></div>
+        </div>
+        <button id="btn-signout" class="btn">Esci</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
