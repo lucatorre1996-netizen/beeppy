@@ -267,6 +267,8 @@ code {
 .screen > .note { color: #fffdf6; text-shadow: 0 1px 6px rgba(0,0,0,0.5); }
 .error { margin: 4px 0 0; padding: 9px 12px; border-radius: 12px; background: #ffe3e0; color: #a3231b; font-size: 14px; font-weight: 700; }
 .note-big { font-size: 15px; }
+.note a { color: inherit; font-weight: 800; }
+.screen > .note a { color: #fffdf6; }
 .hidden { display: none !important; }
 
 /* ------------------------------------------------------------- modali */
