@@ -32,6 +32,29 @@ let sb = null;
 
 export const NICK_RE = /^[a-zA-Z0-9._-]{3,16}$/;
 
+export const PIN_MIN = 4;
+export const PIN_MAX = 8;
+export const PIN_RE = new RegExp(`^[0-9]{${PIN_MIN},${PIN_MAX}}$`);
+
+// Supabase Auth rifiuta password sotto i 6 caratteri, quindi il PIN non può
+// essere spedito così com'è: la password vera viene derivata dal PIN lato
+// client. L'utente digita 4 cifre, Supabase riceve una stringa lunga.
+//
+// ATTENZIONE: questa formula non va MAI cambiata. Cambiarla equivale a
+// cambiare la password di tutti gli account già registrati, che non
+// potrebbero più entrare (e senza email non c'è recupero possibile).
+export function pinToPassword(pin) {
+  return `beeppy.pin.v1:${pin}`;
+}
+
+export function pinProblem(pin) {
+  const p = (pin || '').trim();
+  if (!/^[0-9]*$/.test(p)) return 'Il PIN può contenere solo numeri.';
+  if (p.length < PIN_MIN) return `Il PIN deve avere almeno ${PIN_MIN} cifre.`;
+  if (p.length > PIN_MAX) return `Il PIN può avere al massimo ${PIN_MAX} cifre.`;
+  return null;
+}
+
 // Specchio di public.nickname_ok() nel database. Qui serve solo a dare un
 // messaggio immediato e gentile: l'autorita' resta il vincolo lato server.
 const NICK_SPAM = [
@@ -120,8 +143,8 @@ function human(err) {
     return 'Questo nickname non è ammesso.';
   if (l.includes('already registered') || l.includes('duplicate') || l.includes('unique'))
     return 'Questo nickname è già preso.';
-  if (l.includes('invalid login credentials')) return 'Nickname o password non corretti.';
-  if (l.includes('password should be')) return 'La password deve avere almeno 6 caratteri.';
+  if (l.includes('invalid login credentials')) return 'Nickname o PIN non corretti.';
+  if (l.includes('password should be')) return 'PIN non accettato dal server.';
   if (l.includes('email not confirmed'))
     return 'Conferma email attiva su Supabase: disattivala (Authentication > Providers > Email).';
   if (l.includes('failed to fetch') || l.includes('networkerror'))
@@ -131,8 +154,22 @@ function human(err) {
   return m;
 }
 
+let initPromise = null;
+
 // Ripristina l'eventuale sessione salvata. Non lancia mai: al massimo resta offline.
-export async function init() {
+export function init() {
+  if (!initPromise) initPromise = doInit();
+  return initPromise;
+}
+
+// Chi deve prendere decisioni in base all'essere loggati o no aspetta questa:
+// senza, nei primi istanti dopo l'apertura un utente già registrato si vedrebbe
+// chiedere di registrarsi.
+export function whenReady() {
+  return init();
+}
+
+async function doInit() {
   state.best = localBest();
   if (!ONLINE) return state;
   try {
@@ -173,7 +210,7 @@ export async function nicknameStatus(nick) {
 }
 
 // guard: { honeypot, elapsedMs } - le difese anti-bot raccolte dal form.
-export async function signUp(nick, password, guard = {}) {
+export async function signUp(nick, pin, guard = {}) {
   if (!ONLINE) return { ok: false, error: 'Classifica online non configurata.' };
 
   // Campo trappola: invisibile a chi guarda, irresistibile per i bot che
@@ -188,8 +225,8 @@ export async function signUp(nick, password, guard = {}) {
 
   const problem = nicknameProblem(nick);
   if (problem) return { ok: false, error: problem };
-  if (!password || password.length < 6)
-    return { ok: false, error: 'La password deve avere almeno 6 caratteri.' };
+  const pinBad = pinProblem(pin);
+  if (pinBad) return { ok: false, error: pinBad };
   try {
     const stato = await nicknameStatus(nick);
     if (stato === 'occupato') return { ok: false, error: 'Questo nickname è già preso.' };
@@ -197,7 +234,7 @@ export async function signUp(nick, password, guard = {}) {
     const c = await client();
     const { data, error } = await c.auth.signUp({
       email: emailFor(nick),
-      password,
+      password: pinToPassword(pin),
       options: { data: { nickname: nick } },
     });
     if (error) throw error;
@@ -213,13 +250,15 @@ export async function signUp(nick, password, guard = {}) {
   }
 }
 
-export async function signIn(nick, password) {
+export async function signIn(nick, pin) {
   if (!ONLINE) return { ok: false, error: 'Classifica online non configurata.' };
+  const pinBad = pinProblem(pin);
+  if (pinBad) return { ok: false, error: pinBad };
   try {
     const c = await client();
     const { data, error } = await c.auth.signInWithPassword({
       email: emailFor(nick),
-      password,
+      password: pinToPassword(pin),
     });
     if (error) throw error;
     await loadProfile(data.user.id);

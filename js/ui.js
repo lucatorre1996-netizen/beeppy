@@ -1,6 +1,7 @@
 import * as net from './net.js';
 import { setMuted } from './audio.js';
 import { initInstall, maybeShowInstallHint, markPlayed } from './install.js';
+import * as bio from './biometric.js';
 
 const $ = (id) => document.getElementById(id);
 let game = null;
@@ -8,6 +9,8 @@ let authMode = 'login';
 let lastResult = null;
 let authOpenedAt = 0;      // per misurare quanto ci si mette a compilare
 let volevaGiocare = false; // se l'accesso arriva da un tentativo di giocare
+let ultimoPin = null;      // solo in memoria: serve per attivare la biometria
+                           // subito dopo l'accesso, senza richiedere il PIN
 
 export function initUI(g) {
   game = g;
@@ -42,6 +45,7 @@ export function initUI(g) {
   $('btn-account').addEventListener('click', () => openAuth());
   $('btn-signout').addEventListener('click', async () => {
     await net.signOut();
+    ultimoPin = null;
     syncAccountChip();
     game.toMenu();
     showScreen('menu');
@@ -58,6 +62,12 @@ export function initUI(g) {
     });
   });
 
+  $('f-pass').addEventListener('input', () => {
+    // solo cifre, anche se qualcuno incolla altro
+    const v = $('f-pass').value.replace(/[^0-9]/g, '').slice(0, net.PIN_MAX);
+    if (v !== $('f-pass').value) $('f-pass').value = v;
+  });
+
   $('f-nick').addEventListener('input', () => {
     if (authMode !== 'signup') return;
     const v = $('f-nick').value.trim();
@@ -66,6 +76,9 @@ export function initUI(g) {
     err.textContent = problema || '';
     err.classList.toggle('hidden', !problema);
   });
+
+  $('btn-bio').addEventListener('click', entraConBiometria);
+  $('btn-bio-on').addEventListener('click', attivaBiometria);
 
   $('tab-login').addEventListener('click', () => setAuthMode('login'));
   $('tab-signup').addEventListener('click', () => setAuthMode('signup'));
@@ -95,7 +108,11 @@ export function initUI(g) {
 // Per giocare serve un account: cosi' ogni punteggio ha un proprietario e la
 // classifica non si riempie di partite anonime. Quando la classifica online non
 // e' configurata il gioco resta accessibile, altrimenti sarebbe inutilizzabile.
-function startGame() {
+async function startGame() {
+  // Senza questa attesa, nei primi istanti dopo l'apertura un utente già
+  // registrato si vedrebbe chiedere di registrarsi: la sessione salvata viene
+  // ripristinata in modo asincrono.
+  await net.whenReady();
   if (net.state.online && !net.state.user) {
     volevaGiocare = true;
     openAuth('Registrati per giocare');
@@ -229,6 +246,102 @@ function openAuth(titolo) {
     if (titolo) authMode = 'signup';
     setAuthMode(authMode);
   }
+  syncBiometria(logged);
+}
+
+// Mostra i pulsanti biometrici solo dove hanno senso: lo sblocco a chi lo ha
+// già attivato, l'attivazione a chi è dentro e non lo ha ancora fatto.
+async function syncBiometria(logged) {
+  const btnEntra = $('btn-bio');
+  const btnAttiva = $('btn-bio-on');
+  const nota = $('bio-note');
+  btnEntra.classList.add('hidden');
+  btnAttiva.classList.add('hidden');
+  nota.classList.add('hidden');
+
+  const disponibile = await bio.available();
+  const etichetta = bio.biometricLabel();
+
+  if (!logged) {
+    if (disponibile && bio.isEnrolled()) {
+      $('bio-label').textContent = `Entra come ${bio.enrolledNick()} con ${etichetta}`;
+      btnEntra.classList.remove('hidden');
+    }
+    return;
+  }
+
+  if (!disponibile) {
+    nota.textContent = window.isSecureContext
+      ? 'Questo dispositivo non supporta lo sblocco biometrico.'
+      : `Lo sblocco con ${etichetta} richiede una connessione sicura (https).`;
+    nota.classList.remove('hidden');
+    return;
+  }
+  if (bio.isEnrolled() && bio.enrolledNick() === net.state.user.nickname) {
+    nota.innerHTML = `Sblocco con <b>${etichetta}</b> attivo su questo dispositivo. ` +
+      '<a href="#" id="bio-off">Disattiva</a>';
+    nota.classList.remove('hidden');
+    const off = document.getElementById('bio-off');
+    if (off) off.addEventListener('click', (e) => {
+      e.preventDefault();
+      bio.forget();
+      openAuth();
+    });
+    return;
+  }
+  btnAttiva.textContent = `Attiva ${etichetta}`;
+  btnAttiva.classList.remove('hidden');
+  if (!ultimoPin) {
+    nota.textContent = `Per attivare ${etichetta} serve il PIN: esci e rientra, poi attivalo.`;
+    nota.classList.remove('hidden');
+  }
+}
+
+async function entraConBiometria() {
+  const btn = $('btn-bio');
+  const err = $('auth-error');
+  const testo = $('bio-label').textContent;
+  btn.disabled = true;
+  $('bio-label').textContent = 'Attendi...';
+  const sbloccato = await bio.unlock();
+  if (!sbloccato.ok) {
+    btn.disabled = false;
+    $('bio-label').textContent = testo;
+    err.textContent = sbloccato.error;
+    err.classList.remove('hidden');
+    return;
+  }
+  const out = await net.signIn(sbloccato.nick, sbloccato.pin);
+  btn.disabled = false;
+  $('bio-label').textContent = testo;
+  if (!out.ok) {
+    // il PIN salvato non vale più (cambiato altrove): meglio dimenticarlo
+    bio.forget();
+    err.textContent = `${out.error} Inserisci nickname e PIN.`;
+    err.classList.remove('hidden');
+    syncBiometria(false);
+    return;
+  }
+  ultimoPin = sbloccato.pin;
+  dopoAccesso();
+}
+
+async function attivaBiometria() {
+  const btn = $('btn-bio-on');
+  const nota = $('bio-note');
+  if (!ultimoPin || !net.state.user) return;
+  btn.disabled = true;
+  const prima = btn.textContent;
+  btn.textContent = 'Attendi...';
+  const out = await bio.enroll(net.state.user.nickname, ultimoPin);
+  btn.disabled = false;
+  btn.textContent = prima;
+  if (!out.ok) {
+    nota.textContent = out.error;
+    nota.classList.remove('hidden');
+    return;
+  }
+  openAuth();
 }
 
 function setAuthMode(mode) {
@@ -243,7 +356,7 @@ function setAuthMode(mode) {
 async function submitAuth(e) {
   e.preventDefault();
   const nick = $('f-nick').value.trim();
-  const pass = $('f-pass').value;
+  const pin = $('f-pass').value.trim();
   const err = $('auth-error');
   const btn = $('auth-submit');
   err.classList.add('hidden');
@@ -255,8 +368,8 @@ async function submitAuth(e) {
     elapsedMs: Date.now() - authOpenedAt,
   };
   const out = authMode === 'login'
-    ? await net.signIn(nick, pass)
-    : await net.signUp(nick, pass, guard);
+    ? await net.signIn(nick, pin)
+    : await net.signUp(nick, pin, guard);
 
   btn.disabled = false;
   setAuthMode(authMode);
@@ -265,8 +378,19 @@ async function submitAuth(e) {
     err.classList.remove('hidden');
     return;
   }
+  ultimoPin = pin;
   $('f-pass').value = '';
   $('f-site').value = '';
+  dopoAccesso();
+  // se il punteggio dell'ultima partita non era stato inviato, recuperalo ora
+  if (lastResult && lastResult.score > 0) {
+    const r = lastResult;
+    lastResult = null;
+    net.submitScore(r).then(() => refreshMenu());
+  }
+}
+
+function dopoAccesso() {
   syncAccountChip();
   refreshMenu();
   if (volevaGiocare) {
@@ -276,12 +400,6 @@ async function submitAuth(e) {
     return;
   }
   openAuth();
-  // se il punteggio dell'ultima partita non era stato inviato, recuperalo ora
-  if (lastResult && lastResult.score > 0) {
-    const r = lastResult;
-    lastResult = null;
-    net.submitScore(r).then(() => refreshMenu());
-  }
 }
 
 function syncAccountChip() {

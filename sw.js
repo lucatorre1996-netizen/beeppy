@@ -18,6 +18,7 @@ const ASSETS = [
   'js/ui.js',
   'js/net.js',
   'js/install.js',
+  'js/biometric.js',
   'js/rng.js',
   'js/config.js',
 ];

@@ -149,13 +149,21 @@
           <button id="tab-login" class="tab is-on">Accedi</button>
           <button id="tab-signup" class="tab">Registrati</button>
         </div>
+        <button id="btn-bio" class="btn btn-bio hidden" type="button">
+          <span id="bio-label">Entra con Face ID</span>
+        </button>
+
         <form id="auth-form" autocomplete="on">
           <label for="f-nick">Nickname</label>
           <input id="f-nick" name="username" type="text" inputmode="latin" autocapitalize="none"
                  autocomplete="username" maxlength="16" placeholder="es. ape_regina" required>
-          <label for="f-pass">Password</label>
-          <input id="f-pass" name="password" type="password" autocomplete="current-password"
-                 minlength="6" placeholder="almeno 6 caratteri" required>
+          <label for="f-pass">PIN</label>
+          <!-- inputmode numeric fa comparire il tastierino del telefono; il tipo
+               resta password perché è quello che i gestori di credenziali (e
+               quindi Face ID) riconoscono e salvano. -->
+          <input id="f-pass" name="password" type="password" inputmode="numeric"
+                 pattern="[0-9]*" autocomplete="current-password"
+                 minlength="4" maxlength="8" placeholder="4 cifre o più" required>
           <!-- campo trappola per i bot: invisibile e ignorato dagli screen reader.
                Se arriva compilato, la registrazione viene rifiutata. -->
           <div class="honeypot" aria-hidden="true">
@@ -164,8 +172,10 @@
           </div>
           <p id="auth-error" class="error hidden"></p>
           <button id="auth-submit" class="btn btn-primary" type="submit">Accedi</button>
-          <p class="note">Serve solo un nickname: nessuna email, nessuna verifica.
-             Il nickname è il nome che appare in classifica.</p>
+          <p class="note">Serve solo un nickname e un PIN di almeno 4 cifre: nessuna email,
+             nessuna verifica. Il nickname è il nome che appare in classifica.
+             <b>Attenzione:</b> senza email il PIN non è recuperabile, quindi scegline uno
+             che ricordi.</p>
         </form>
       </div>
 
@@ -174,7 +184,9 @@
         <div class="over-rows">
           <div><span>Record</span><b id="auth-best">0</b></div>
         </div>
-        <button id="btn-signout" class="btn">Esci</button>
+        <button id="btn-bio-on" class="btn hidden" type="button">Attiva Face ID</button>
+        <p id="bio-note" class="note hidden"></p>
+        <button id="btn-signout" class="btn btn-ghost">Esci</button>
       </div>
     </div>
   </div>

@@ -309,6 +309,16 @@ body.is-flying #hud { opacity: 0.32; pointer-events: none; }
 }
 .tab.is-on { background: #fffdf6; color: var(--ink); box-shadow: 0 2px 8px rgba(23,16,8,0.14); }
 
+.btn-bio {
+  width: 100%;
+  margin-top: 14px;
+  background: linear-gradient(180deg, #4a4f57, #33373d);
+  color: #fffdf6;
+  box-shadow: 0 4px 0 #24272b, var(--shadow);
+}
+
+#auth-logged .btn { width: 100%; margin-top: 10px; }
+
 #auth-form { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
 #auth-form label { font-size: 13px; font-weight: 700; color: var(--ink-soft); }
 #auth-form input {
@@ -323,6 +333,8 @@ body.is-flying #hud { opacity: 0.32; pointer-events: none; }
   color: var(--ink);
 }
 #auth-form input:focus { outline: none; border-color: var(--honey); }
+#f-pass { letter-spacing: 6px; font-size: 20px; }
+#f-pass::placeholder { letter-spacing: 0; font-size: 17px; }
 #auth-form .btn { margin-top: 8px; }
 /* il campo trappola deve essere invisibile ma raggiungibile dai bot:
    display:none lo farebbe ignorare anche a loro. */

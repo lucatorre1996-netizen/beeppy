@@ -28,6 +28,8 @@ e il record viene salvato sul dispositivo, ma non c'è classifica condivisa.
 3. **Authentication → Sign In / Providers → Email**: disattiva **"Confirm email"**.
    Serve perché il login è a nickname: il gioco genera internamente una email
    sintetica (`nickname@beeppy.play`) che non esiste e non va confermata.
+   Non serve invece abbassare la lunghezza minima della password: il PIN viene
+   derivato in una stringa più lunga (vedi *Accesso con nickname e PIN*).
 4. **Project Settings → API**: copia *Project URL* e *anon public key* in
    [`js/config.js`](js/config.js).
 
@@ -60,6 +62,57 @@ bash scripts/make-splash.sh
 iOS usa l'immagine di avvio **solo se le misure combaciano esattamente** con quelle
 del dispositivo: se esce un iPhone con un formato nuovo, va aggiunto alla lista
 `SIZES` dello script e ai `<link rel="apple-touch-startup-image">` in `index.html`.
+
+## Accesso con nickname e PIN
+
+Non c'è email e non c'è password: si entra con un **nickname** e un **PIN di 4-8
+cifre**, con il tastierino numerico (`inputmode="numeric"`).
+
+Due dettagli implementativi che è importante conoscere prima di toccare questa parte:
+
+- **Il PIN non viene spedito così com'è.** Supabase Auth rifiuta password sotto i 6
+  caratteri, quindi `pinToPassword()` in [`js/net.js`](js/net.js) deriva la password
+  vera dal PIN (`beeppy.pin.v1:1234`). **Quella formula non va mai cambiata:**
+  cambiarla equivale a cambiare la password di tutti gli account esistenti, che senza
+  email non avrebbero modo di rientrare.
+- **Il campo resta `type="password"`** anche se accetta solo cifre, perché è il tipo
+  che i gestori di credenziali riconoscono: è quello che permette a iOS di salvare il
+  PIN nel portachiavi e di reinserirlo con Face ID. Un tastierino disegnato da noi
+  sarebbe più bello e sempre numerico, ma spegnerebbe l'autofill e quindi Face ID.
+
+### Quanto è sicuro un PIN di 4 cifre
+
+Poco, e va detto: sono 10.000 combinazioni e i nickname sono pubblici in classifica,
+quindi in teoria un account si può forzare provando tutti i PIN. L'unica difesa reale
+sono i **limiti per indirizzo IP di Supabase Auth** (Authentication → Rate limits), che
+rendono l'operazione lunga giorni per un singolo account. Per una classifica di un
+gioco è un compromesso accettabile; se un giorno ci fosse in gioco qualcosa di più,
+la strada è alzare il minimo a 6 cifre (`PIN_MIN` in `js/net.js`) e stringere quei
+limiti.
+
+Il campo accetta fino a 8 cifre: chi vuole può già usarne di più.
+
+### Face ID / impronta digitale
+
+Due meccanismi diversi, che conviene non confondere:
+
+1. **Portachiavi del sistema** (funziona da subito, senza codice nostro): iOS e Android
+   propongono di salvare il PIN e lo reinseriscono dopo un'autenticazione biometrica.
+   Dipende solo dagli attributi `autocomplete` corretti sul form, che ci sono.
+2. **Sblocco biometrico dentro il gioco** ([`js/biometric.js`](js/biometric.js)): alla
+   prima attivazione il dispositivo crea una chiave WebAuthn e il PIN viene salvato in
+   quel browser; per rileggerlo serve Face ID o l'impronta. Al successivo avvio compare
+   *"Entra come nickname con Face ID"*.
+
+   Sul secondo va detta una cosa scomoda: **il PIN resta scritto sul dispositivo.**
+   WebAuthn qui è un lucchetto sull'accesso, non una cassaforte: chi avesse in mano il
+   telefono già sbloccato e sapesse dove guardare potrebbe leggerlo. La vera
+   autenticazione forte (passkey verificata dal server) richiederebbe una Edge Function
+   che convalida l'assertion e crea la sessione, perché Supabase non supporta WebAuthn
+   nativamente.
+
+   Richiede **HTTPS**: da `http://` l'API non esiste e il gioco lo dice invece di
+   fallire in silenzio.
 
 ## Registrazione obbligatoria e controlli anti-spam
 
@@ -118,6 +171,8 @@ server si ottiene lo stesso punteggio, o si scopre che non torna.
 | `js/net.js` | Supabase + fallback locale (il gioco non si rompe mai se la rete manca) |
 | `js/ui.js` | schermate, login, classifica |
 | `js/audio.js` | effetti sonori sintetizzati con WebAudio (nessun file audio) |
+| `js/biometric.js` | sblocco con Face ID / impronta (WebAuthn come lucchetto locale) |
+| `js/install.js` | invito a installare l'app, diverso fra iOS e Android |
 | `scripts/sim-bot.js` | bot che gioca da solo: serve a tarare la difficoltà senza browser |
 | `scripts/check-fairness.js` | verifica che ogni coppia di tronchi sia raggiungibile in volo |
 
