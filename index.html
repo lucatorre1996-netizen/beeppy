@@ -198,14 +198,33 @@
   </div>
 </div>
 
-<!-- Schermata di riparazione: compare solo se l'avvio non riesce. -->
-<div id="boot-error" class="boot-error hidden">
-  <div class="boot-card">
-    <h2>Beeppy non si è avviato</h2>
-    <p>Il browser sta usando una versione vecchia dei file del gioco.
-       Questo pulsante li riscarica e riapre la pagina.</p>
-    <button id="boot-fix" class="btn btn-primary" type="button">Aggiorna e riprova</button>
-    <p id="boot-detail" class="boot-detail"></p>
+<!-- Schermata di riparazione: compare solo se l'avvio non riesce.
+     Gli stili sono scritti qui dentro, non nel foglio di stile, e la visibilità
+     si comanda con style.display invece che con una classe. Il motivo: questa
+     schermata serve proprio quando il browser ha in cache una versione vecchia
+     dei file, e styles.css è uno di quei file. La prima volta è comparsa
+     illeggibile, testo scuro su fondo scuro, perché il CSS vecchio non aveva le
+     sue regole. Una rete di sicurezza non può dipendere da ciò che potrebbe
+     essere rotto. -->
+<div id="boot-error" style="display:none;position:fixed;inset:0;z-index:99;
+     align-items:center;justify-content:center;padding:24px;background:#14212b;
+     font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif">
+  <div style="width:100%;max-width:340px;padding:26px 22px;border-radius:22px;
+       background:#fffdf6;color:#2b2118;box-shadow:0 12px 34px rgba(0,0,0,.4);
+       text-align:center">
+    <div style="font-size:44px;line-height:1;margin-bottom:6px">🐝</div>
+    <h2 style="margin:0 0 8px;font-size:21px;font-weight:800;color:#2b2118">
+      Beeppy non si è avviato</h2>
+    <p style="margin:0 0 18px;font-size:15px;line-height:1.45;color:#6b6055">
+      Il browser sta usando una versione vecchia dei file del gioco.
+      Questo pulsante li riscarica e riapre la pagina.</p>
+    <button id="boot-fix" type="button"
+      style="width:100%;min-height:54px;border:0;border-radius:16px;cursor:pointer;
+             background:linear-gradient(180deg,#ffd569,#ffc542);color:#2b2118;
+             box-shadow:0 4px 0 #e8a01a;font-size:19px;font-weight:700;
+             font-family:inherit">Aggiorna e riprova</button>
+    <p id="boot-detail" style="margin:16px 0 0;font-size:11px;color:#9a9086;
+       font-family:ui-monospace,Menlo,monospace;word-break:break-word"></p>
   </div>
 </div>
 
@@ -227,10 +246,10 @@
   function mostra(dettaglio) {
     if (avviato) return;
     var box = document.getElementById('boot-error');
-    if (!box || !box.classList.contains('hidden')) return;
+    if (!box || box.style.display === 'flex') return;
     var d = document.getElementById('boot-detail');
     if (d && dettaglio) d.textContent = dettaglio;
-    box.classList.remove('hidden');
+    box.style.display = 'flex';
   }
 
   window.addEventListener('error', function (e) { mostra(e && e.message); });
