@@ -4,9 +4,9 @@
   "description": "Un'ape, dei tronchi e una classifica mondiale.",
   "start_url": "./",
   "scope": "./",
-  "display": "fullscreen",
+  "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#3fb0dd",
+  "background_color": "#5cbfe4",
   "theme_color": "#3fb0dd",
   "icons": [
     {
@@ -33,5 +33,16 @@
       "type": "image/png",
       "purpose": "maskable"
     }
-  ]
+  ],
+  "id": "/beeppy",
+  "lang": "it",
+  "display_override": [
+    "fullscreen",
+    "standalone"
+  ],
+  "categories": [
+    "games",
+    "entertainment"
+  ],
+  "prefer_related_applications": false
 }

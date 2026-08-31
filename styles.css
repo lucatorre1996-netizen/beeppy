@@ -122,10 +122,11 @@ body.is-flying #hud { opacity: 0.32; pointer-events: none; }
 }
 .logo-bee {
   display: block;
-  width: 96px;
-  height: 96px;
+  width: 122px;
+  height: 122px;
   margin: 0 auto;
-  background: url('assets/icon.svg') center/contain no-repeat;
+  /* solo l'ape, senza il quadro dell'icona app: qui il fondo è già il cielo */
+  background: url('assets/bee.svg') center/contain no-repeat;
   filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.3));
   animation: hover 2.4s ease-in-out infinite;
 }
@@ -323,11 +324,36 @@ body.is-flying #hud { opacity: 0.32; pointer-events: none; }
 }
 #auth-form input:focus { outline: none; border-color: var(--honey); }
 #auth-form .btn { margin-top: 8px; }
+/* il campo trappola deve essere invisibile ma raggiungibile dai bot:
+   display:none lo farebbe ignorare anche a loro. */
+.honeypot { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 .logged-as { font-size: 19px; font-weight: 600; margin: 16px 0 12px; }
 
 @media (max-height: 620px) {
   .logo h1 { font-size: 46px; }
-  .logo-bee { width: 66px; height: 66px; }
+  .logo-bee { width: 84px; height: 84px; }
   .big-score { font-size: 58px; }
   .screen { gap: 14px; }
 }
+
+/* ------------------------------------------- invito a installare l'app */
+.install-hint {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: calc(10px + var(--safe-b));
+  z-index: 7;
+  padding: 14px 16px;
+  border-radius: 20px;
+  background: var(--panel);
+  backdrop-filter: blur(8px);
+  box-shadow: var(--shadow);
+  animation: rise 0.28s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+.install-body { display: flex; align-items: flex-start; gap: 12px; }
+.install-body img { flex: 0 0 auto; border-radius: 10px; }
+.install-body b { font-size: 17px; }
+.install-body p { margin: 2px 0 0; font-size: 14px; font-weight: 600; color: var(--ink-soft); line-height: 1.35; }
+.install-actions { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.install-actions .btn { flex: 1; min-height: 46px; font-size: 17px; }
+.install-actions .btn-ghost { flex: 0 0 auto; margin-left: auto; } /* da solo va a destra */

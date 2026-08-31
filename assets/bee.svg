@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd772"/>
+      <stop offset="0.55" stop-color="#ffc542"/>
+      <stop offset="1" stop-color="#f0a01c"/>
+    </linearGradient>
+  </defs>
+
+
+  <!-- ali -->
+  <g fill="#eaf6ff" fill-opacity="0.75" stroke="#ffffff" stroke-opacity="0.9" stroke-width="6">
+    <ellipse cx="212" cy="176" rx="52" ry="92" transform="rotate(-28 212 176)"/>
+    <ellipse cx="286" cy="168" rx="42" ry="76" transform="rotate(22 286 168)"/>
+  </g>
+
+  <!-- corpo -->
+  <g transform="rotate(-12 256 286)">
+    <ellipse cx="238" cy="286" rx="128" ry="94" fill="url(#body)"/>
+    <!-- strisce, ritagliate sul corpo -->
+    <clipPath id="c"><ellipse cx="238" cy="286" rx="128" ry="94"/></clipPath>
+    <g clip-path="url(#c)" fill="#2b2118">
+      <polygon points="176,180 218,180 196,392 154,392"/>
+      <polygon points="244,180 286,180 264,392 222,392"/>
+    </g>
+    <!-- pungiglione -->
+    <polygon points="112,266 62,286 112,306" fill="#2b2118"/>
+    <!-- testa -->
+    <ellipse cx="352" cy="272" rx="68" ry="70" fill="#3a2c1e"/>
+    <!-- antenne -->
+    <g stroke="#3a2c1e" stroke-width="12" stroke-linecap="round" fill="none">
+      <path d="M362 214 Q394 168 414 150"/>
+      <path d="M382 220 Q422 190 446 182"/>
+    </g>
+    <circle cx="416" cy="146" r="14" fill="#3a2c1e"/>
+    <circle cx="450" cy="180" r="14" fill="#3a2c1e"/>
+    <!-- occhio -->
+    <ellipse cx="374" cy="262" rx="27" ry="32" fill="#ffffff"/>
+    <ellipse cx="382" cy="264" rx="14" ry="18" fill="#20180f"/>
+    <circle cx="388" cy="252" r="6" fill="#ffffff" fill-opacity="0.92"/>
+    <!-- luce sul dorso -->
+    <ellipse cx="228" cy="230" rx="74" ry="26" fill="#ffffff" fill-opacity="0.22"/>
+  </g>
+</svg>

@@ -12,6 +12,29 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/icon-180.png">
+<!-- Schermate di avvio iOS: senza queste, all'apertura dalla home si vede
+     una pagina bianca. iOS le usa solo se le misure combaciano esattamente.
+     Rigenerabili con: bash scripts/make-splash.sh -->
+<link rel="apple-touch-startup-image" href="assets/splash/splash-1320x2868.png"
+      media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-1290x2796.png"
+      media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-1284x2778.png"
+      media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-1206x2622.png"
+      media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-1179x2556.png"
+      media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-1170x2532.png"
+      media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-1125x2436.png"
+      media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-1242x2688.png"
+      media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-828x1792.png"
+      media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-750x1334.png"
+      media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
@@ -53,6 +76,8 @@
       <button id="btn-play" class="btn btn-primary">Gioca</button>
       <button id="btn-leaderboard" class="btn">Classifica</button>
     </div>
+    <p id="login-note" class="note hidden">Per giocare serve un account: il nickname è il nome che
+       finisce in classifica.</p>
     <p id="offline-note" class="note hidden">Modalità offline: il record resta su questo dispositivo.</p>
   </section>
 
@@ -83,6 +108,21 @@
       <button id="btn-home" class="btn btn-ghost">Menu</button>
     </div>
   </section>
+
+  <!-- invito a installare l'app (iOS non offre nessun prompt automatico) -->
+  <div id="install-hint" class="install-hint hidden">
+    <div class="install-body">
+      <img src="assets/icon.svg" alt="" width="42" height="42">
+      <div>
+        <b>Installa Beeppy</b>
+        <p id="install-text"></p>
+      </div>
+    </div>
+    <div class="install-actions">
+      <button id="install-go" class="btn btn-primary hidden">Installa</button>
+      <button id="install-close" class="btn btn-ghost">Non ora</button>
+    </div>
+  </div>
 
   <!-- classifica -->
   <div id="modal-lb" class="modal">
@@ -116,6 +156,12 @@
           <label for="f-pass">Password</label>
           <input id="f-pass" name="password" type="password" autocomplete="current-password"
                  minlength="6" placeholder="almeno 6 caratteri" required>
+          <!-- campo trappola per i bot: invisibile e ignorato dagli screen reader.
+               Se arriva compilato, la registrazione viene rifiutata. -->
+          <div class="honeypot" aria-hidden="true">
+            <label for="f-site">Sito web</label>
+            <input id="f-site" name="website" type="text" tabindex="-1" autocomplete="off">
+          </div>
           <p id="auth-error" class="error hidden"></p>
           <button id="auth-submit" class="btn btn-primary" type="submit">Accedi</button>
           <p class="note">Serve solo un nickname: nessuna email, nessuna verifica.

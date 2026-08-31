@@ -1,10 +1,13 @@
 import * as net from './net.js';
 import { setMuted } from './audio.js';
+import { initInstall, maybeShowInstallHint, markPlayed } from './install.js';
 
 const $ = (id) => document.getElementById(id);
 let game = null;
 let authMode = 'login';
 let lastResult = null;
+let authOpenedAt = 0;      // per misurare quanto ci si mette a compilare
+let volevaGiocare = false; // se l'accesso arriva da un tentativo di giocare
 
 export function initUI(g) {
   game = g;
@@ -36,10 +39,12 @@ export function initUI(g) {
   });
   $('btn-leaderboard').addEventListener('click', openLeaderboard);
   $('btn-lb2').addEventListener('click', openLeaderboard);
-  $('btn-account').addEventListener('click', openAuth);
+  $('btn-account').addEventListener('click', () => openAuth());
   $('btn-signout').addEventListener('click', async () => {
     await net.signOut();
     syncAccountChip();
+    game.toMenu();
+    showScreen('menu');
     openAuth();
     refreshMenu();
   });
@@ -51,6 +56,15 @@ export function initUI(g) {
     m.addEventListener('click', (e) => {
       if (e.target === m) closeModal(m.id);
     });
+  });
+
+  $('f-nick').addEventListener('input', () => {
+    if (authMode !== 'signup') return;
+    const v = $('f-nick').value.trim();
+    const err = $('auth-error');
+    const problema = v.length >= 3 ? net.nicknameProblem(v) : null;
+    err.textContent = problema || '';
+    err.classList.toggle('hidden', !problema);
   });
 
   $('tab-login').addEventListener('click', () => setAuthMode('login'));
@@ -71,12 +85,22 @@ export function initUI(g) {
   paintSound();
 
   if (!net.state.online) $('offline-note').classList.remove('hidden');
+  initInstall();
   syncAccountChip();
+  syncLoginNote();
   showScreen('menu');
   refreshMenu();
 }
 
+// Per giocare serve un account: cosi' ogni punteggio ha un proprietario e la
+// classifica non si riempie di partite anonime. Quando la classifica online non
+// e' configurata il gioco resta accessibile, altrimenti sarebbe inutilizzabile.
 function startGame() {
+  if (net.state.online && !net.state.user) {
+    volevaGiocare = true;
+    openAuth('Registrati per giocare');
+    return;
+  }
   closeModal('modal-lb');
   closeModal('modal-auth');
   game.arm();
@@ -90,6 +114,10 @@ export function showScreen(name) {
   // mentre si vola i pulsanti in alto si spostano di mezzo: un tap accidentale
   // non deve aprire una modale a partita in corso.
   document.body.classList.toggle('is-flying', name === 'none' || name === 'ready');
+
+  const hint = $('install-hint');
+  if (name === 'menu') maybeShowInstallHint();
+  else if (hint) hint.classList.add('hidden');
 }
 
 function closeModal(id) {
@@ -103,6 +131,7 @@ function openModal(id) {
 // ------------------------------------------------------------------ partita
 async function onGameOver(res) {
   lastResult = res;
+  markPlayed();
   showScreen('over');
   $('over-score').textContent = res.score;
   $('over-best').textContent = Math.max(net.state.best, res.score);
@@ -184,8 +213,9 @@ function escapeHtml(s) {
 }
 
 // ------------------------------------------------------------------ account
-function openAuth() {
+function openAuth(titolo) {
   openModal('modal-auth');
+  authOpenedAt = Date.now();
   const logged = Boolean(net.state.user);
   $('auth-forms').classList.toggle('hidden', logged);
   $('auth-logged').classList.toggle('hidden', !logged);
@@ -195,7 +225,8 @@ function openAuth() {
     $('auth-nick').textContent = net.state.user.nickname;
     $('auth-best').textContent = net.state.best;
   } else {
-    $('auth-title').textContent = 'Entra in classifica';
+    $('auth-title').textContent = titolo || 'Entra in classifica';
+    if (titolo) authMode = 'signup';
     setAuthMode(authMode);
   }
 }
@@ -219,7 +250,13 @@ async function submitAuth(e) {
   btn.disabled = true;
   btn.textContent = 'Attendi...';
 
-  const out = authMode === 'login' ? await net.signIn(nick, pass) : await net.signUp(nick, pass);
+  const guard = {
+    honeypot: $('f-site').value,
+    elapsedMs: Date.now() - authOpenedAt,
+  };
+  const out = authMode === 'login'
+    ? await net.signIn(nick, pass)
+    : await net.signUp(nick, pass, guard);
 
   btn.disabled = false;
   setAuthMode(authMode);
@@ -229,8 +266,15 @@ async function submitAuth(e) {
     return;
   }
   $('f-pass').value = '';
+  $('f-site').value = '';
   syncAccountChip();
   refreshMenu();
+  if (volevaGiocare) {
+    volevaGiocare = false;
+    closeModal('modal-auth');
+    startGame();
+    return;
+  }
   openAuth();
   // se il punteggio dell'ultima partita non era stato inviato, recuperalo ora
   if (lastResult && lastResult.score > 0) {
@@ -243,6 +287,13 @@ async function submitAuth(e) {
 function syncAccountChip() {
   const chip = $('btn-account');
   chip.textContent = net.state.user ? `🐝 ${net.state.user.nickname}` : 'Accedi';
+  syncLoginNote();
+}
+
+function syncLoginNote() {
+  const serve = net.state.online && !net.state.user;
+  $('login-note').classList.toggle('hidden', !serve);
+  $('btn-play').textContent = serve ? 'Registrati e gioca' : 'Gioca';
 }
 
 async function refreshMenu() {

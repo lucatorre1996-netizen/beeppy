@@ -6,6 +6,7 @@ const ASSETS = [
   'styles.css',
   'manifest.webmanifest',
   'assets/icon.svg',
+  'assets/bee.svg',
   'assets/icon-192.png',
   'js/main.js',
   'js/game.js',
@@ -16,6 +17,7 @@ const ASSETS = [
   'js/audio.js',
   'js/ui.js',
   'js/net.js',
+  'js/install.js',
   'js/rng.js',
   'js/config.js',
 ];
@@ -35,13 +37,23 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET') return;
-  // le chiamate a Supabase e ai font non vanno mai servite dalla cache
+  // le chiamate a Supabase e ai font non passano mai per la cache
   if (url.origin !== location.origin) return;
+
+  // Rete per prima, cache come rete di salvataggio. L'ordine inverso
+  // (cache-first) è più veloce di un pelo, ma congela il gioco alla versione
+  // installata: chi ha già aperto Beeppy non vedrebbe mai un aggiornamento
+  // finché non cambia il nome della cache. Per un gioco che riceve ritocchi di
+  // taratura, non è un compromesso accettabile.
   e.respondWith(
-    caches.match(e.request).then((hit) => hit || fetch(e.request).then((res) => {
-      const copy = res.clone();
-      caches.open(CACHE).then((c) => c.put(e.request, copy)).catch(() => {});
-      return res;
-    }).catch(() => caches.match('index.html')))
+    fetch(e.request)
+      .then((res) => {
+        if (res && res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(e.request, copy)).catch(() => {});
+        }
+        return res;
+      })
+      .catch(() => caches.match(e.request).then((hit) => hit || caches.match('index.html')))
   );
 });

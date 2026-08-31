@@ -44,16 +44,51 @@ create policy "punteggi leggibili da tutti"
   on public.scores for select using (true);
 -- nessuna policy di insert/update/delete: si scrive solo via submit_score()
 
+-- ------------------------------------------------- nickname: filtro anti-spam
+--  La classifica è pubblica, quindi il nickname è il posto dove arriva lo spam
+--  (link, nomi commerciali, finti account ufficiali). Questa funzione è la
+--  regola unica: la usano il vincolo della tabella, il trigger di
+--  registrazione e il controllo di disponibilità.
+create or replace function public.nickname_ok(p text)
+returns boolean
+language sql
+immutable
+as $$
+  select p is not null
+     and p ~ '^[A-Za-z0-9._-]{3,16}$'          -- solo caratteri innocui
+     and p ~ '[A-Za-z]'                         -- almeno una lettera
+     and p !~ '(.)\1{3,}'                      -- non 4 caratteri uguali di fila
+     and p !~* '(https?|www\.)'                 -- niente indirizzi web
+     and p !~* '\.(com|it|net|org|io|xyz|ru|shop|online)([^a-z]|$)'
+     and p !~* '(viagra|casino|scommesse|porno|xxx|forex|bitcoin|crypto|guadagn)'
+     and lower(p) not in ('admin','administrator','amministratore','moderator','mod',
+                          'root','support','staff','system','beeppy','official',
+                          'ufficiale','null','undefined');
+$$;
+
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'profiles_nickname_ok') then
+    alter table public.profiles
+      add constraint profiles_nickname_ok check (public.nickname_ok(nickname));
+  end if;
+end
+$$;
+
 -- ------------------------------------------- profilo creato alla registrazione
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
 security definer set search_path = public
 as $$
+declare
+  v_nick text := coalesce(new.raw_user_meta_data->>'nickname',
+                          'ape_' || substr(new.id::text, 1, 6));
 begin
-  insert into public.profiles (id, nickname)
-  values (new.id, coalesce(new.raw_user_meta_data->>'nickname',
-                           'ape_' || substr(new.id::text, 1, 6)));
+  if not public.nickname_ok(v_nick) then
+    raise exception 'nickname non ammesso: %', v_nick;
+  end if;
+  insert into public.profiles (id, nickname) values (new.id, v_nick);
   insert into public.scores (user_id) values (new.id);
   return new;
 end;
@@ -79,17 +114,25 @@ where s.best_score > 0;
 
 grant select on public.leaderboard to anon, authenticated;
 
--- --------------------------------------------- nickname libero? (pre-controllo)
-create or replace function public.nickname_available(p_nick text)
-returns boolean
+-- ------------------------------------- nickname utilizzabile? (pre-controllo)
+--  Ritorna 'ok', 'occupato' oppure 'non_ammesso', così la schermata di
+--  registrazione può dire subito qual è il problema invece di far fallire
+--  la registrazione con un errore tecnico.
+create or replace function public.nickname_status(p_nick text)
+returns text
 language sql
 security definer set search_path = public
 stable
 as $$
-  select not exists (select 1 from public.profiles where lower(nickname) = lower(p_nick));
+  select case
+    when not public.nickname_ok(p_nick) then 'non_ammesso'
+    when exists (select 1 from public.profiles where lower(nickname) = lower(p_nick)) then 'occupato'
+    else 'ok'
+  end;
 $$;
 
-grant execute on function public.nickname_available(text) to anon, authenticated;
+grant execute on function public.nickname_status(text) to anon, authenticated;
+drop function if exists public.nickname_available(text);
 
 -- ------------------------------------------------------- invio del punteggio
 --  Controlli anti-cheat "di base":

@@ -39,6 +39,54 @@ export const SUPABASE_ANON_KEY = 'eyJhbGciOi...';
 La `anon key` è **pubblica per definizione**: può stare nel repo. La sicurezza non
 dipende da lei ma dalle policy RLS dello schema.
 
+## Installazione come app
+
+Beeppy è una PWA: si aggiunge alla schermata Home e si apre a schermo pieno, senza
+barre del browser, con la sua icona e la sua schermata di avvio.
+
+- **iPhone / iPad:** apri il sito in **Safari** (non nel browser di Instagram o
+  Facebook, che non hanno la voce giusta), tocca **Condividi** e poi **Aggiungi alla
+  schermata Home**. Il gioco lo suggerisce da sé dopo la prima partita.
+- **Android:** Chrome mostra il pulsante **Installa** dentro il gioco.
+
+Serve **HTTPS**: da `http://` l'installazione e il funzionamento offline non partono.
+
+Le schermate di avvio iOS stanno in `assets/splash/` e si rigenerano con:
+
+```bash
+bash scripts/make-splash.sh
+```
+
+iOS usa l'immagine di avvio **solo se le misure combaciano esattamente** con quelle
+del dispositivo: se esce un iPhone con un formato nuovo, va aggiunto alla lista
+`SIZES` dello script e ai `<link rel="apple-touch-startup-image">` in `index.html`.
+
+## Registrazione obbligatoria e controlli anti-spam
+
+Per giocare serve un account: così ogni punteggio ha un proprietario e la classifica
+non si riempie di partite anonime. (Se Supabase non è configurato il gioco resta
+giocabile in locale, altrimenti sarebbe inutilizzabile.)
+
+Le difese sono su tre livelli, dal più aggirabile al più solido:
+
+1. **Sul form** (`js/net.js`): un campo trappola invisibile che i bot compilano e gli
+   umani no; un tempo minimo di compilazione di 2,5 secondi; un limite di 3 account
+   al giorno per dispositivo. Fermano l'automazione grezza, ma si aggirano svuotando
+   la memoria del browser: sono un filtro, non un muro.
+2. **Sul database** (`supabase/schema.sql`): la funzione `nickname_ok()` è la regola
+   unica — la usano il vincolo della tabella, il trigger di registrazione e il
+   controllo di disponibilità. Rifiuta indirizzi web, nomi commerciali tipici dello
+   spam, caratteri ripetuti e nickname che fingerebbero un ruolo ufficiale
+   (`admin`, `staff`, `beeppy`...). La lista è in un unico punto ed è facile
+   allungarla.
+3. **Su Supabase Auth**: i limiti per indirizzo IP sono già attivi e si possono
+   stringere dalla dashboard (Authentication → Rate limits). È l'unico livello che
+   un utente non può toccare dal proprio browser.
+
+Se lo spam diventasse un problema reale, il passo successivo è un captcha:
+Supabase supporta hCaptcha e Turnstile nativamente (Authentication → Settings →
+Bot and abuse protection), e sul form andrebbe aggiunto il widget.
+
 ## Come sono protetti i punteggi
 
 Il client non può scrivere nella tabella `scores`: non esistono policy di insert o
@@ -79,9 +127,15 @@ npm run test:sim        # verifica che la simulazione sia deterministica
 node scripts/sim-bot.js # un bot gioca: quanti punti fa un giocatore competente?
 ```
 
-Valori attuali: un giocatore discreto arriva fra i 15 e i 60 punti. Il varco si stringe
-da 250 a 168 unità e la velocità sale da 235 a 400 al crescere del punteggio
-(vedi `js/constants.js`).
+Valori attuali: un giocatore discreto chiude fra i 20 e i 50 punti. Il varco si stringe
+da 250 a 168 unità nell'arco dei primi 37 tronchi e la velocità sale da 235 a 400 entro
+i 30 punti (vedi `js/constants.js`).
+
+Un dettaglio da non perdere di vista se ritocchi questi valori: la soglia anti-cheat in
+`submit_score()` pretende almeno 0,7 s di gioco per punto, mentre alla velocità massima
+un punto richiede 300/400 = 0,75 s. Se alzi ancora `SPEED_MAX` o abbassi `SPACING`,
+abbassa di conseguenza quella soglia, altrimenti i punteggi legittimi dei giocatori più
+bravi verrebbero rifiutati.
 
 ## Deploy su Hostinger
 
@@ -100,7 +154,8 @@ Due cose a cui fare attenzione:
 
 - **Serve HTTPS.** Il service worker (e quindi l'installazione come app) funziona
   solo su HTTPS o su `localhost`: attiva il certificato SSL del dominio.
-- **Cache del service worker.** Dopo un aggiornamento, chi ha già aperto il gioco
-  potrebbe vedere la versione vecchia finché il service worker non si rinnova. Se
-  cambi i file, alza il numero di versione in [`sw.js`](sw.js) (`const CACHE =
-  'beeppy-v1'` → `v2`): la cache vecchia viene buttata all'attivazione.
+- **Aggiornamenti.** Il service worker usa la strategia *rete per prima*: chi è
+  online riceve sempre l'ultima versione dei file, e la cache entra in gioco solo
+  quando la rete manca. Non serve quindi toccare nulla a ogni pubblicazione. Se un
+  giorno cambi la lista dei file in [`sw.js`](sw.js), alza il nome della cache
+  (`beeppy-v1` → `v2`) per buttare via quella vecchia all'attivazione.

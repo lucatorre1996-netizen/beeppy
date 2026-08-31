@@ -8,7 +8,17 @@ const LS = {
   best: 'beeppy.best',
   nick: 'beeppy.nick',
   muted: 'beeppy.muted',
+  signups: 'beeppy.signups',
 };
+
+// Anti-spam sulle registrazioni. Nessuna di queste difese e' invalicabile da
+// chi sa quello che fa (il limite per dispositivo si aggira svuotando la
+// memoria del browser), ma insieme fermano i bot che riempiono i form in
+// automatico e chi crea account in serie a mano. Le protezioni che contano
+// davvero stanno sul server: il filtro nickname nel database e i limiti per
+// indirizzo IP di Supabase Auth.
+const SIGNUP_MAX_PER_DAY = 3;
+const SIGNUP_MIN_FILL_MS = 2500; // un umano non compila due campi in meno di 2,5 s
 
 export const state = {
   online: ONLINE,
@@ -21,6 +31,54 @@ export const state = {
 let sb = null;
 
 export const NICK_RE = /^[a-zA-Z0-9._-]{3,16}$/;
+
+// Specchio di public.nickname_ok() nel database. Qui serve solo a dare un
+// messaggio immediato e gentile: l'autorita' resta il vincolo lato server.
+const NICK_SPAM = [
+  /(.)\1{3,}/,                                          // aaaa
+  /https?|www\./i,                                       // indirizzi web
+  /\.(com|it|net|org|io|xyz|ru|shop|online)([^a-z]|$)/i,
+  /viagra|casino|scommesse|porno|xxx|forex|bitcoin|crypto|guadagn/i,
+];
+const NICK_RESERVED = ['admin', 'administrator', 'amministratore', 'moderator', 'mod',
+  'root', 'support', 'staff', 'system', 'beeppy', 'official', 'ufficiale', 'null', 'undefined'];
+
+// Ritorna null se il nickname va bene, altrimenti il motivo del rifiuto.
+export function nicknameProblem(nick) {
+  const n = (nick || '').trim();
+  if (!NICK_RE.test(n)) return 'Nickname: da 3 a 16 caratteri, solo lettere, numeri, punto, - e _';
+  if (!/[a-zA-Z]/.test(n)) return 'Il nickname deve contenere almeno una lettera.';
+  if (NICK_RESERVED.includes(n.toLowerCase())) return 'Questo nickname è riservato, scegline un altro.';
+  if (NICK_SPAM.some((re) => re.test(n))) return 'Questo nickname non è ammesso.';
+  return null;
+}
+
+function signupHistory() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(LS.signups) || '[]');
+    const day = Date.now() - 24 * 3600 * 1000;
+    return raw.filter((t) => typeof t === 'number' && t > day);
+  } catch (e) {
+    return [];
+  }
+}
+
+// Ritorna null se puo' registrarsi, altrimenti i minuti di attesa.
+function signupBlocked() {
+  const h = signupHistory();
+  if (h.length < SIGNUP_MAX_PER_DAY) return null;
+  const oldest = Math.min.apply(null, h);
+  const waitMs = oldest + 24 * 3600 * 1000 - Date.now();
+  return Math.max(1, Math.round(waitMs / 60000));
+}
+
+function recordSignup() {
+  const h = signupHistory();
+  h.push(Date.now());
+  try {
+    localStorage.setItem(LS.signups, JSON.stringify(h));
+  } catch (e) { /* memoria piena o disattivata: pazienza */ }
+}
 
 export function localBest() {
   return Number(localStorage.getItem(LS.best) || 0);
@@ -58,6 +116,8 @@ async function client() {
 function human(err) {
   const m = (err && (err.message || String(err))) || 'errore sconosciuto';
   const l = m.toLowerCase();
+  if (l.includes('non ammesso') || l.includes('nickname_ok'))
+    return 'Questo nickname non è ammesso.';
   if (l.includes('already registered') || l.includes('duplicate') || l.includes('unique'))
     return 'Questo nickname è già preso.';
   if (l.includes('invalid login credentials')) return 'Nickname o password non corretti.';
@@ -100,26 +160,40 @@ async function loadProfile(userId) {
   return state.user;
 }
 
-export async function nicknameAvailable(nick) {
+// 'ok' | 'occupato' | 'non_ammesso' | 'sconosciuto'
+export async function nicknameStatus(nick) {
   try {
     const c = await client();
-    const { data, error } = await c.rpc('nickname_available', { p_nick: nick });
+    const { data, error } = await c.rpc('nickname_status', { p_nick: nick });
     if (error) throw error;
-    return data === true;
+    return data || 'sconosciuto';
   } catch (e) {
-    return true; // in caso di dubbio lascia decidere al vincolo del database
+    return 'sconosciuto'; // in caso di dubbio decide il vincolo del database
   }
 }
 
-export async function signUp(nick, password) {
+// guard: { honeypot, elapsedMs } - le difese anti-bot raccolte dal form.
+export async function signUp(nick, password, guard = {}) {
   if (!ONLINE) return { ok: false, error: 'Classifica online non configurata.' };
-  if (!NICK_RE.test(nick))
-    return { ok: false, error: 'Nickname: 3-16 caratteri, lettere numeri . _ -' };
+
+  // Campo trappola: invisibile a chi guarda, irresistibile per i bot che
+  // compilano ogni input che trovano.
+  if (guard.honeypot) return { ok: false, error: 'Registrazione non valida.' };
+  if (typeof guard.elapsedMs === 'number' && guard.elapsedMs < SIGNUP_MIN_FILL_MS)
+    return { ok: false, error: 'Un attimo troppo veloce: riprova fra un secondo.' };
+
+  const wait = signupBlocked();
+  if (wait !== null)
+    return { ok: false, error: `Troppi account creati da questo dispositivo. Riprova fra ${wait} minuti.` };
+
+  const problem = nicknameProblem(nick);
+  if (problem) return { ok: false, error: problem };
   if (!password || password.length < 6)
     return { ok: false, error: 'La password deve avere almeno 6 caratteri.' };
   try {
-    if (!(await nicknameAvailable(nick)))
-      return { ok: false, error: 'Questo nickname è già preso.' };
+    const stato = await nicknameStatus(nick);
+    if (stato === 'occupato') return { ok: false, error: 'Questo nickname è già preso.' };
+    if (stato === 'non_ammesso') return { ok: false, error: 'Questo nickname non è ammesso.' };
     const c = await client();
     const { data, error } = await c.auth.signUp({
       email: emailFor(nick),
@@ -131,6 +205,7 @@ export async function signUp(nick, password) {
       // succede se la conferma email è rimasta attiva sul progetto
       return { ok: false, error: 'Account creato ma sessione assente: disattiva la conferma email su Supabase.' };
     }
+    recordSignup();
     await loadProfile(data.user.id);
     return { ok: true };
   } catch (e) {

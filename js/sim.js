@@ -15,6 +15,9 @@ export class Sim {
     this.bee = { y: K.WORLD_H * 0.42, vy: 0 };
     this.trunks = [];
     this.nextTrunkX = worldW + 140;
+    // contatore monotono dei tronchi generati: serve per stringere il varco.
+    // NON usare trunks.length, che perde i tronchi già passati.
+    this.spawned = 0;
 
     this.score = 0;
     this.alive = true;
@@ -38,7 +41,7 @@ export class Sim {
 
   spawnUntil(x) {
     while (this.nextTrunkX < x) {
-      const gap = K.gapForScore(this.trunks.length);
+      const gap = K.gapForScore(this.spawned++);
       const min = K.GAP_MARGIN_TOP + gap / 2;
       const max = this.floorY - K.GAP_MARGIN_BOTTOM - gap / 2;
       const gapY = min + this.rng() * (max - min);
