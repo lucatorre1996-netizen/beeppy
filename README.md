@@ -119,23 +119,51 @@ server si ottiene lo stesso punteggio, o si scopre che non torna.
 | `js/ui.js` | schermate, login, classifica |
 | `js/audio.js` | effetti sonori sintetizzati con WebAudio (nessun file audio) |
 | `scripts/sim-bot.js` | bot che gioca da solo: serve a tarare la difficoltà senza browser |
+| `scripts/check-fairness.js` | verifica che ogni coppia di tronchi sia raggiungibile in volo |
 
 ## Taratura della difficoltà
 
 ```bash
-npm run test:sim        # verifica che la simulazione sia deterministica
-node scripts/sim-bot.js # un bot gioca: quanti punti fa un giocatore competente?
+npm test                     # determinismo + equità (i due controlli automatici)
+node scripts/sim-bot.js      # un bot gioca da solo: quanti punti fa?
 ```
 
-Valori attuali: un giocatore discreto chiude fra i 20 e i 50 punti. Il varco si stringe
-da 250 a 168 unità nell'arco dei primi 37 tronchi e la velocità sale da 235 a 400 entro
-i 30 punti (vedi `js/constants.js`).
+La difficoltà cresce così, e poi **si ferma** (vedi `js/constants.js`):
 
-Un dettaglio da non perdere di vista se ritocchi questi valori: la soglia anti-cheat in
-`submit_score()` pretende almeno 0,7 s di gioco per punto, mentre alla velocità massima
-un punto richiede 300/400 = 0,75 s. Se alzi ancora `SPEED_MAX` o abbassi `SPACING`,
-abbassa di conseguenza quella soglia, altrimenti i punteggi legittimi dei giocatori più
-bravi verrebbero rifiutati.
+| | inizio | fine | plateau |
+| --- | --- | --- | --- |
+| velocità | 235 | 400 (+5,5 per punto) | punto 30 |
+| varco | 250 | 168 (−2,2 per tronco) | tronco 37 |
+| tempo fra due tronchi | 1,28 s | 0,75 s | |
+
+Il tetto è voluto: con l'accelerazione infinita tutti muoiono più o meno allo stesso
+punteggio e la classifica misura solo i millisecondi di reazione. Con il plateau il
+punteggio cresce quanto regge la concentrazione. Un bot competente chiude fra i 32 e i
+210 punti.
+
+### La regola di equità
+
+**Il varco successivo deve essere raggiungibile a volo.** Prima non lo era: la posizione
+era casuale dentro tutta l'altezza utile, quindi capitava un varco in basso seguito da
+uno in alto con 396 unità di dislivello, mentre nel tempo disponibile l'ape ne risale
+201. Quelle coppie non erano difficili, erano impossibili, e più la velocità saliva più
+capitavano spesso: il gioco sembrava murarsi verso i 28 punti.
+
+Ora `maxGapShift()` limita lo spostamento del varco a una frazione di quanto l'ape sale
+davvero, ricavata dalla fisica (impulso e gravità), quindi il limite si adatta da sé se
+ritocchi il volo. Salire costa più che scendere, per cui il limite verso il basso è più
+generoso (`FALL_BONUS`): la varietà dei tracciati resta.
+
+`npm run test:fairness` controlla 2800 tronchi e **fallisce** se una coppia richiede più
+dell'80% della salita possibile. Se ritocchi `GRAVITY`, `FLAP_V`, `SPEED_MAX` o
+`SPACING`, eseguilo: è lì per questo.
+
+### L'altro vincolo da ricordare
+
+La soglia anti-cheat in `submit_score()` pretende almeno 0,7 s di gioco per punto,
+mentre alla velocità massima un punto richiede 300/400 = 0,75 s: restano solo 7 punti
+percentuali di margine. Se alzi `SPEED_MAX` o abbassi `SPACING`, abbassa anche quella
+soglia, altrimenti i punteggi legittimi dei giocatori più bravi verrebbero rifiutati.
 
 ## Deploy su Hostinger
 

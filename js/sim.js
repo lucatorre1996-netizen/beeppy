@@ -18,6 +18,7 @@ export class Sim {
     // contatore monotono dei tronchi generati: serve per stringere il varco.
     // NON usare trunks.length, che perde i tronchi già passati.
     this.spawned = 0;
+    this.lastGapY = null; // posizione del varco precedente, per limitare i salti
 
     this.score = 0;
     this.alive = true;
@@ -41,10 +42,28 @@ export class Sim {
 
   spawnUntil(x) {
     while (this.nextTrunkX < x) {
-      const gap = K.gapForScore(this.spawned++);
-      const min = K.GAP_MARGIN_TOP + gap / 2;
-      const max = this.floorY - K.GAP_MARGIN_BOTTOM - gap / 2;
+      const idx = this.spawned++;
+      const gap = K.gapForScore(idx);
+      const bandaMin = K.GAP_MARGIN_TOP + gap / 2;
+      const bandaMax = this.floorY - K.GAP_MARGIN_BOTTOM - gap / 2;
+
+      // Il varco successivo deve restare a portata d'ali: vedi maxGapShift().
+      let min = bandaMin;
+      let max = bandaMax;
+      if (this.lastGapY !== null) {
+        const salto = K.maxGapShift(idx);
+        min = Math.max(bandaMin, this.lastGapY - salto);
+        max = Math.min(bandaMax, this.lastGapY + salto * K.FALL_BONUS);
+        if (max < min) {
+          // la fascia consentita e quella raggiungibile non si incontrano:
+          // teniamo il varco dov'era, dentro i limiti del mondo
+          const c = Math.min(bandaMax, Math.max(bandaMin, this.lastGapY));
+          min = c;
+          max = c;
+        }
+      }
       const gapY = min + this.rng() * (max - min);
+      this.lastGapY = gapY;
       this.trunks.push({
         x: this.nextTrunkX,
         gapY,

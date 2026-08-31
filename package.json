@@ -6,6 +6,8 @@
   "description": "Beeppy - un'ape, dei tronchi, una classifica mondiale",
   "scripts": {
     "dev": "node scripts/serve.js",
-    "test:sim": "node scripts/sim-check.js"
+    "test:sim": "node scripts/sim-check.js",
+    "test:fairness": "node scripts/check-fairness.js",
+    "test": "node scripts/sim-check.js && node scripts/check-fairness.js"
   }
 }

@@ -35,6 +35,26 @@ export const SPEED_STEP = 5.5;   // per punto
 export const GAP_MARGIN_TOP = 80;    // il varco non si incolla ai bordi
 export const GAP_MARGIN_BOTTOM = 40; // rispetto al terreno
 
+// Quanto può spostarsi il centro del varco da un tronco al successivo.
+//
+// Senza questo limite il generatore produce coppie fisicamente irraggiungibili:
+// un varco in basso e il successivo in alto sono 396 unità di dislivello, ma
+// nel tempo fra due tronchi l'ape ne risale al massimo 201. Non è difficoltà,
+// è una partita persa a sorte. Il tetto è ricavato da quanto l'ape sale
+// davvero, quindi si adatta da sé se cambiano gravità, impulso o velocità.
+//
+// Salire costa: ogni battito dà FLAP_V^2/(2*GRAVITY) unità e poi si ricade,
+// quindi in salita continua la velocità media è circa metà dell'impulso.
+// Scendere è molto più facile (si lascia fare alla gravità), per questo il
+// limite verso il basso è più generoso: la varietà dei tracciati resta.
+export const CLIMB_RATE = Math.abs(FLAP_V) / 2;
+export const SHIFT_MARGIN = 0.62; // margine: arrivare non basta, va anche centrato
+export const FALL_BONUS = 1.7;
+
+export function maxGapShift(score) {
+  return CLIMB_RATE * (SPACING / speedForScore(score)) * SHIFT_MARGIN;
+}
+
 export function gapForScore(score) {
   return Math.max(GAP_MIN, GAP_START - score * GAP_STEP);
 }
