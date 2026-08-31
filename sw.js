@@ -1,5 +1,5 @@
 // Cache "app shell": il gioco si apre anche senza rete (la classifica no).
-const CACHE = 'beeppy-v1';
+const CACHE = 'beeppy-v2';
 const ASSETS = [
   './',
   'index.html',

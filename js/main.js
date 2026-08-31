@@ -84,9 +84,35 @@ document.addEventListener('beeppy:net-ready', () => {
   });
 });
 
-// service worker: rende il gioco avviabile anche senza rete
+// Service worker: rende il gioco avviabile anche senza rete.
+//
+// Il punto delicato è l'aggiornamento. Il service worker che sta girando è
+// quello installato in una visita precedente, e finché non viene sostituito
+// serve i file secondo le sue regole: si può finire con l'HTML nuovo e i moduli
+// vecchi, cioè un'app mezza aggiornata che si comporta in modi che non esistono
+// in nessuna versione. È già capitato: la schermata diceva "modalità prova" con
+// la logica vecchia sotto.
+//
+// Quando un service worker nuovo prende il controllo, ricarichiamo una volta.
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+  const avevaControllore = Boolean(navigator.serviceWorker.controller);
+  let ricaricato = false;
+
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    // alla prima installazione non c'è nessun modulo vecchio in giro: la
+    // ricarica sarebbe solo un lampo inutile
+    if (!avevaControllore || ricaricato) return;
+    ricaricato = true;
+    location.reload();
+  });
+
+  window.addEventListener('load', async () => {
+    try {
+      const reg = await navigator.serviceWorker.register('sw.js');
+      // Controllo esplicito degli aggiornamenti a ogni apertura: senza, il
+      // browser lo fa quando gli pare e si può restare per giorni su una
+      // versione vecchia. Costa una richiesta condizionale per sw.js.
+      reg.update().catch(() => {});
+    } catch (e) { /* niente: il gioco funziona anche senza service worker */ }
   });
 }

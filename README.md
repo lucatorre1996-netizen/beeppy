@@ -274,6 +274,19 @@ Due cose a cui fare attenzione:
   solo su HTTPS o su `localhost`: attiva il certificato SSL del dominio.
 - **Aggiornamenti.** Il service worker usa la strategia *rete per prima*: chi è
   online riceve sempre l'ultima versione dei file, e la cache entra in gioco solo
-  quando la rete manca. Non serve quindi toccare nulla a ogni pubblicazione. Se un
-  giorno cambi la lista dei file in [`sw.js`](sw.js), alza il nome della cache
-  (`beeppy-v1` → `v2`) per buttare via quella vecchia all'attivazione.
+  quando la rete manca. Non serve toccare nulla a ogni pubblicazione. Se cambi la
+  lista dei file in [`sw.js`](sw.js), alza il nome della cache (`beeppy-v2` → `v3`)
+  per buttare via quella vecchia all'attivazione.
+
+  Attenzione a un tranello che è già costato una sessione di debug: **il service
+  worker che gira è quello installato in una visita precedente**, con le sue
+  regole, anche dopo che hai pubblicato la versione nuova. Si può quindi finire con
+  l'HTML nuovo e i moduli vecchi, cioè un'app mezza aggiornata che si comporta in
+  un modo che non esiste in nessuna versione (nel caso reale: la schermata diceva
+  "modalità prova" mentre sotto girava la logica precedente, che lasciava giocare
+  senza account). Per questo `js/main.js` ora chiede un controllo aggiornamenti
+  esplicito a ogni apertura e **ricarica una volta** quando un service worker
+  nuovo prende il controllo.
+
+  Se un dispositivo resta comunque indietro, la via sicura è cancellare i dati del
+  sito: su iOS *Impostazioni → Safari → Avanzate → Dati dei siti web*.
