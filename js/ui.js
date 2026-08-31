@@ -97,7 +97,6 @@ export function initUI(g) {
   });
   paintSound();
 
-  if (net.MODO_PROVA) $('offline-note').classList.remove('hidden');
   initInstall();
   syncAccountChip();
   syncLoginNote();
@@ -105,15 +104,16 @@ export function initUI(g) {
   refreshMenu();
 }
 
-// Per giocare serve un account: così ogni punteggio ha un proprietario e la
-// classifica non si riempie di partite anonime. L'unica eccezione è la modalità
-// prova (?prova nell'URL), che si dichiara da sé nel menu.
+// Per giocare serve un account, senza eccezioni: così ogni punteggio ha un
+// proprietario e la classifica non si riempie di partite anonime. Se la
+// classifica online non è configurata non si gioca, e la schermata di accesso
+// spiega cosa manca.
 async function startGame() {
   // Senza questa attesa, nei primi istanti dopo l'apertura un utente già
   // registrato si vedrebbe chiedere di registrarsi: la sessione salvata viene
   // ripristinata in modo asincrono.
   await net.whenReady();
-  if (net.serveAccount() && !net.state.user) {
+  if (!net.state.user) {
     volevaGiocare = true;
     openAuth(giaConosciuto() ? 'Accedi per giocare' : 'Registrati per giocare',
              modoPredefinito());
@@ -440,7 +440,7 @@ function syncAccountChip() {
 }
 
 function syncLoginNote() {
-  const serve = net.serveAccount() && !net.state.user;
+  const serve = !net.state.user;
   const noto = giaConosciuto();
   $('login-note').classList.toggle('hidden', !serve);
   $('login-note').textContent = noto

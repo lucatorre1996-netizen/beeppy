@@ -20,21 +20,6 @@ const LS = {
 const SIGNUP_MAX_PER_DAY = 3;
 const SIGNUP_MIN_FILL_MS = 2500; // un umano non compila due campi in meno di 2,5 s
 
-// Per giocare serve un account. Punto: nessuna deroga automatica, nemmeno
-// quando la classifica online non è configurata (in quel caso non si gioca, e
-// la schermata di accesso lo dice chiaramente).
-//
-// L'unica via per provare il gioco senza account è aggiungere ?prova all'URL:
-// deve essere un gesto voluto e visibile, non una scorciatoia in cui inciampare.
-// Non è un buco nella classifica: i punteggi li scrive solo submit_score(), che
-// pretende un utente autenticato, quindi chi gioca in modalità prova non finisce
-// in classifica in nessun caso.
-export const MODO_PROVA = /(?:^|[?&])(prova|dev)(?:=|&|$)/.test(location.search);
-
-export function serveAccount() {
-  return !MODO_PROVA;
-}
-
 export const state = {
   online: ONLINE,
   connected: false,

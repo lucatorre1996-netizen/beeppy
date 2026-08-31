@@ -84,17 +84,43 @@ document.addEventListener('beeppy:net-ready', () => {
   });
 });
 
-// Service worker: rende il gioco avviabile anche senza rete.
+// ---------------------------------------------------------- service worker
 //
-// Il punto delicato è l'aggiornamento. Il service worker che sta girando è
-// quello installato in una visita precedente, e finché non viene sostituito
-// serve i file secondo le sue regole: si può finire con l'HTML nuovo e i moduli
-// vecchi, cioè un'app mezza aggiornata che si comporta in modi che non esistono
-// in nessuna versione. È già capitato: la schermata diceva "modalità prova" con
-// la logica vecchia sotto.
+// Rende il gioco avviabile anche senza rete, ma ha un lato scomodo: quello che
+// gira è il worker installato in una visita precedente, con le sue regole,
+// anche dopo che hai pubblicato la versione nuova. Si può finire con l'HTML
+// nuovo e i moduli vecchi, cioè un'app mezza aggiornata che si comporta in un
+// modo che non esiste in nessuna versione. È già costato una sessione di
+// debug: la schermata mostrava un testo nuovo con la logica vecchia sotto, e
+// nessuna correzione riusciva ad arrivare sul dispositivo.
 //
-// Quando un service worker nuovo prende il controllo, ricarichiamo una volta.
-if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+// Perciò in sviluppo il service worker non lo vogliamo affatto, e rimuoviamo
+// anche quelli già installati: su un indirizzo locale i file devono arrivare
+// sempre dal server, senza intermediari. In produzione invece serve, e allora
+// chiediamo un controllo aggiornamenti a ogni apertura e ricarichiamo una volta
+// quando un worker nuovo prende il controllo.
+function inSviluppo() {
+  const h = location.hostname;
+  return h === 'localhost' || h === '127.0.0.1' || h === '::1' || h.endsWith('.local') ||
+         /^10\./.test(h) || /^192\.168\./.test(h) ||
+         /^172\.(1[6-9]|2\d|3[01])\./.test(h);
+}
+
+if ('serviceWorker' in navigator && inSviluppo()) {
+  // pulizia: via il worker e le cache lasciate da visite precedenti
+  navigator.serviceWorker.getRegistrations()
+    .then((regs) => Promise.all(regs.map((r) => r.unregister())))
+    .then((tolti) => {
+      if (!tolti.length) return null;
+      return window.caches ? caches.keys().then((k) => Promise.all(k.map((n) => caches.delete(n)))) : null;
+    })
+    .then((pulite) => {
+      if (!pulite) return;
+      console.info('[beeppy] service worker rimosso (indirizzo di sviluppo): ricarico una volta');
+      location.reload();
+    })
+    .catch(() => {});
+} else if ('serviceWorker' in navigator && location.protocol === 'https:') {
   const avevaControllore = Boolean(navigator.serviceWorker.controller);
   let ricaricato = false;
 

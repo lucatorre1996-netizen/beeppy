@@ -18,9 +18,14 @@ npm run dev
 
 Poi apri http://localhost:5173 (su telefono: stesso Wi-Fi, `http://IP-DEL-MAC:5173`).
 
-**Per giocare serve un account**, quindi finché non hai configurato Supabase usa
-http://localhost:5173/?prova — la modalità prova gioca senza account e lo dichiara nel
-menu (vedi *Registrazione obbligatoria*).
+**Per giocare serve un account**, quindi il gioco resta bloccato (con una schermata
+che spiega cosa manca) finché non hai configurato Supabase: vedi il paragrafo qui sotto.
+
+Nota sullo sviluppo: su indirizzi locali (`localhost`, `*.local`, IP di rete privata) il
+service worker **non viene registrato**, e se ne trova uno installato da visite
+precedenti lo rimuove insieme alle sue cache. Serve a evitare il caso, già capitato
+davvero, di un dispositivo che continua a eseguire i moduli vecchi mentre l'HTML è già
+nuovo: in sviluppo i file devono arrivare sempre dal server, senza intermediari.
 
 ## Attivare la classifica online (Supabase)
 
@@ -117,19 +122,19 @@ Due meccanismi diversi, che conviene non confondere:
 
 ## Registrazione obbligatoria e controlli anti-spam
 
-Per giocare serve un account: così ogni punteggio ha un proprietario e la classifica
-non si riempie di partite anonime. **Non ci sono deroghe automatiche**: se la classifica
-online non è configurata non si gioca, e la schermata di accesso spiega perché invece di
-lasciare che l'invio del punteggio fallisca dopo la partita.
+Per giocare serve un account, **senza eccezioni**: così ogni punteggio ha un
+proprietario e la classifica non si riempie di partite anonime. Se la classifica online
+non è configurata non si gioca, e la schermata di accesso dice cosa manca invece di
+lasciare che l'invio del punteggio fallisca a partita conclusa.
 
-L'unica via per giocare senza account è aggiungere **`?prova`** all'indirizzo
-(`http://localhost:5173/?prova`). È volutamente un gesto esplicito, non una scorciatoia
-in cui inciampare, e il menu lo dichiara: *"Modalità prova: si gioca senza account e il
-punteggio non entra in classifica"*.
+Non esiste nessuna scorciatoia per giocare senza account: c'era una modalità prova
+attivabile dall'URL, ed è stata rimossa perché confondeva più di quanto aiutasse. Per
+provare il gioco durante lo sviluppo si guida la partita dalla console:
 
-Non è un buco nella classifica: i punteggi li scrive solo `submit_score()`, che pretende
-un utente autenticato. Chi gioca in modalità prova non entra in classifica in nessun
-caso, nemmeno sul dominio pubblico.
+```js
+window.beeppy.game.arm()   // pronti
+window.beeppy.game.tap()   // batti le ali
+```
 
 Le difese sono su tre livelli, dal più aggirabile al più solido:
 
