@@ -78,7 +78,8 @@
     </div>
     <p id="login-note" class="note hidden">Per giocare serve un account: il nickname è il nome che
        finisce in classifica.</p>
-    <p id="offline-note" class="note hidden">Modalità offline: il record resta su questo dispositivo.</p>
+    <p id="offline-note" class="note hidden">Modalità prova: si gioca senza account e il punteggio
+       non entra in classifica.</p>
   </section>
 
   <!-- pronti, via -->
@@ -177,6 +178,15 @@
              <b>Attenzione:</b> senza email il PIN non è recuperabile, quindi scegline uno
              che ricordi.</p>
         </form>
+      </div>
+
+      <div id="auth-nobackend" class="hidden">
+        <p class="note note-big">La classifica online non è ancora collegata, quindi
+          non è possibile registrarsi né giocare.</p>
+        <p class="note note-big">Chi gestisce il sito deve creare il progetto Supabase
+          e inserire le chiavi in <code>js/config.js</code> (istruzioni nel README).</p>
+        <p class="note note-big">Per provare il gioco senza account, aggiungi
+          <code>?prova</code> all'indirizzo.</p>
       </div>
 
       <div id="auth-logged" class="hidden">

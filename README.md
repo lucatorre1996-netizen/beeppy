@@ -18,8 +18,9 @@ npm run dev
 
 Poi apri http://localhost:5173 (su telefono: stesso Wi-Fi, `http://IP-DEL-MAC:5173`).
 
-Senza configurare Supabase il gioco funziona subito in **modalità offline**: si gioca
-e il record viene salvato sul dispositivo, ma non c'è classifica condivisa.
+**Per giocare serve un account**, quindi finché non hai configurato Supabase usa
+http://localhost:5173/?prova — la modalità prova gioca senza account e lo dichiara nel
+menu (vedi *Registrazione obbligatoria*).
 
 ## Attivare la classifica online (Supabase)
 
@@ -117,8 +118,18 @@ Due meccanismi diversi, che conviene non confondere:
 ## Registrazione obbligatoria e controlli anti-spam
 
 Per giocare serve un account: così ogni punteggio ha un proprietario e la classifica
-non si riempie di partite anonime. (Se Supabase non è configurato il gioco resta
-giocabile in locale, altrimenti sarebbe inutilizzabile.)
+non si riempie di partite anonime. **Non ci sono deroghe automatiche**: se la classifica
+online non è configurata non si gioca, e la schermata di accesso spiega perché invece di
+lasciare che l'invio del punteggio fallisca dopo la partita.
+
+L'unica via per giocare senza account è aggiungere **`?prova`** all'indirizzo
+(`http://localhost:5173/?prova`). È volutamente un gesto esplicito, non una scorciatoia
+in cui inciampare, e il menu lo dichiara: *"Modalità prova: si gioca senza account e il
+punteggio non entra in classifica"*.
+
+Non è un buco nella classifica: i punteggi li scrive solo `submit_score()`, che pretende
+un utente autenticato. Chi gioca in modalità prova non entra in classifica in nessun
+caso, nemmeno sul dominio pubblico.
 
 Le difese sono su tre livelli, dal più aggirabile al più solido:
 

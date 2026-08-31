@@ -97,7 +97,7 @@ export function initUI(g) {
   });
   paintSound();
 
-  if (!net.state.online) $('offline-note').classList.remove('hidden');
+  if (net.MODO_PROVA) $('offline-note').classList.remove('hidden');
   initInstall();
   syncAccountChip();
   syncLoginNote();
@@ -105,15 +105,15 @@ export function initUI(g) {
   refreshMenu();
 }
 
-// Per giocare serve un account: cosi' ogni punteggio ha un proprietario e la
-// classifica non si riempie di partite anonime. Quando la classifica online non
-// e' configurata il gioco resta accessibile, altrimenti sarebbe inutilizzabile.
+// Per giocare serve un account: così ogni punteggio ha un proprietario e la
+// classifica non si riempie di partite anonime. L'unica eccezione è la modalità
+// prova (?prova nell'URL), che si dichiara da sé nel menu.
 async function startGame() {
   // Senza questa attesa, nei primi istanti dopo l'apertura un utente già
   // registrato si vedrebbe chiedere di registrarsi: la sessione salvata viene
   // ripristinata in modo asincrono.
   await net.whenReady();
-  if (net.state.online && !net.state.user) {
+  if (net.serveAccount() && !net.state.user) {
     volevaGiocare = true;
     openAuth('Registrati per giocare');
     return;
@@ -234,13 +234,17 @@ function openAuth(titolo) {
   openModal('modal-auth');
   authOpenedAt = Date.now();
   const logged = Boolean(net.state.user);
-  $('auth-forms').classList.toggle('hidden', logged);
+  const configurato = net.state.online;
+  $('auth-forms').classList.toggle('hidden', logged || !configurato);
   $('auth-logged').classList.toggle('hidden', !logged);
+  $('auth-nobackend').classList.toggle('hidden', logged || configurato);
   $('auth-error').classList.add('hidden');
   if (logged) {
     $('auth-title').textContent = 'Il tuo account';
     $('auth-nick').textContent = net.state.user.nickname;
     $('auth-best').textContent = net.state.best;
+  } else if (!configurato) {
+    $('auth-title').textContent = 'Classifica non configurata';
   } else {
     $('auth-title').textContent = titolo || 'Entra in classifica';
     if (titolo) authMode = 'signup';
@@ -409,7 +413,7 @@ function syncAccountChip() {
 }
 
 function syncLoginNote() {
-  const serve = net.state.online && !net.state.user;
+  const serve = net.serveAccount() && !net.state.user;
   $('login-note').classList.toggle('hidden', !serve);
   $('btn-play').textContent = serve ? 'Registrati e gioca' : 'Gioca';
 }

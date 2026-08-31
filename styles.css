@@ -236,9 +236,19 @@ body.is-flying #hud { opacity: 0.32; pointer-events: none; }
 }
 .over-rows b { font-size: 20px; font-weight: 800; }
 
+code {
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: rgba(43, 33, 24, 0.08);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.92em;
+  white-space: nowrap;   /* "?prova" non deve spezzarsi a metà */
+}
+
 .note { margin: 8px 0 0; font-size: 13px; font-weight: 600; color: var(--ink-soft); line-height: 1.35; }
 .screen > .note { color: #fffdf6; text-shadow: 0 1px 6px rgba(0,0,0,0.5); }
 .error { margin: 4px 0 0; padding: 9px 12px; border-radius: 12px; background: #ffe3e0; color: #a3231b; font-size: 14px; font-weight: 700; }
+.note-big { font-size: 15px; }
 .hidden { display: none !important; }
 
 /* ------------------------------------------------------------- modali */
