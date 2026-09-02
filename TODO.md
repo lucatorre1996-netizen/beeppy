@@ -8,8 +8,16 @@ Ordinate per urgenza: la P0 blocca l'invito agli amici, il resto no.
 ## P0 — prima di far entrare gente
 
 - [x] ~~Cancellare l'account di collaudo `verifica_prod`~~ — fatto.
-- [ ] **Eseguire il nuovo `supabase/schema.sql`** nel SQL Editor. Ora serve per
-      sei cose, non più una: `delete_my_account()`, il codice di recupero
+- [ ] **Rieseguire `supabase/schema.sql`.** Una parte è già stata eseguita (le
+      tabelle ci sono, la classifica è chiusa agli anonimi, le funzioni admin
+      rispondono), ma mancano le aggiunte più recenti: il permesso di *creare* la
+      riga dei contatti — senza il quale chi si è iscritto prima non può inserire
+      la propria email — il bucket delle foto profilo e la chiave di
+      configurazione `richiedi_installazione`.
+      **Ordine importante: prima questo, poi il Deploy.** Al contrario, i giocatori
+      già iscritti si vedrebbero chiedere l'email senza poterla salvare (il gioco
+      li lascia passare lo stesso, ma dopo un messaggio d'errore che non meritano).
+      Vecchia nota, ancora valida: `delete_my_account()`, il codice di recupero
       (`set_recovery_code` e `reset_pin_with_code`), la tabella `games` dello
       storico, `submit_score()` che ci scrive dentro, le funzioni dell'area
       amministratore e la tabella `app_config`. Finché non lo esegui, quelle

@@ -119,7 +119,14 @@ drop policy if exists "ognuno aggiorna i propri contatti" on public.contatti;
 create policy "ognuno aggiorna i propri contatti"
   on public.contatti for update using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
--- nessuna policy di insert: la riga la crea il trigger alla registrazione
+-- Chi si è iscritto prima che l'email diventasse obbligatoria non ha questa
+-- riga: deve poterla creare, altrimenti resterebbe senza modo di aggiungere il
+-- proprio indirizzo. Può creare solo la propria, e la chiave primaria impedisce
+-- i doppioni.
+drop policy if exists "ognuno crea i propri contatti" on public.contatti;
+create policy "ognuno crea i propri contatti"
+  on public.contatti for insert to authenticated
+  with check (auth.uid() = user_id);
 
 
 insert into public.app_config (chiave, valore) values

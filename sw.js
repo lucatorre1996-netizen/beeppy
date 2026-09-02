@@ -1,6 +1,6 @@
 // Cache "app shell": il gioco si apre anche senza rete (la classifica no).
-const CACHE = 'beeppy-v10';
-const V = '9'; // deve combaciare con la import map in index.html
+const CACHE = 'beeppy-v11';
+const V = '10'; // deve combaciare con la import map in index.html
 const ASSETS = [
   './',
   'index.html',

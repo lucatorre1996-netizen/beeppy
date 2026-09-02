@@ -600,7 +600,18 @@ code {
 }
 
 /* --------------------------------------- schermata di installazione obbligata */
-#screen-install { background: rgba(20, 33, 43, 0.35); gap: 14px; }
+#screen-install, #screen-email { background: rgba(20, 33, 43, 0.35); gap: 14px; }
+#screen-email .install-passi { text-align: left; }
+#email-form { display: flex; flex-direction: column; gap: 3px; }
+#email-form label { font-size: 13px; font-weight: 700; color: var(--ink-soft); margin-top: 6px; }
+#email-form input {
+  min-height: 48px; padding: 0 13px;
+  border: 2px solid var(--panel-line); border-radius: 13px;
+  background: #fff; font: inherit; font-size: 16px; color: var(--ink);
+  -webkit-user-select: text; user-select: text;
+}
+#email-form input:focus { outline: none; border-color: var(--honey); }
+#email-form .btn { margin-top: 12px; }
 .install-titolo {
   margin: 0; font-size: 26px; font-weight: 800; color: #fffdf6; line-height: 1.15;
   text-shadow: 0 3px 0 var(--honey-dark), 0 8px 20px rgba(0, 0, 0, 0.35);

@@ -109,6 +109,38 @@
     </div>
   </section>
 
+  <!-- Email mancante: chi si è iscritto prima che diventasse obbligatoria deve
+       inserirla prima di poter giocare. Schermata a sé e non un avviso, perché
+       deve essere chiaro che è un passaggio, non un consiglio. -->
+  <section id="screen-email" class="screen">
+    <span class="logo-bee" aria-hidden="true"></span>
+    <h2 class="install-titolo">Manca la tua email</h2>
+    <p class="install-perche">Serve per restituirti l'accesso se dimentichi il PIN,
+       e per avvisarti se c'è un problema col tuo account. Non la vede nessun altro
+       giocatore e non riceverai pubblicità.</p>
+
+    <div class="install-passi">
+      <form id="email-form">
+        <label for="e-email">Email</label>
+        <input id="e-email" type="email" inputmode="email" autocapitalize="none"
+               autocomplete="email" maxlength="120" placeholder="la tua email" required>
+        <div class="due-campi">
+          <div>
+            <label for="e-nome">Nome</label>
+            <input id="e-nome" type="text" maxlength="60" placeholder="facoltativo">
+          </div>
+          <div>
+            <label for="e-cognome">Cognome</label>
+            <input id="e-cognome" type="text" maxlength="60" placeholder="facoltativo">
+          </div>
+        </div>
+        <p id="email-errore" class="error hidden"></p>
+        <button id="email-salva" class="btn btn-primary" type="submit">Salva e gioca</button>
+      </form>
+      <p class="note"><a href="privacy.html" target="_blank" rel="noopener">Come trattiamo i tuoi dati</a></p>
+    </div>
+  </section>
+
   <!-- Schermata di installazione obbligatoria. Compare solo se l'amministratore
        ha acceso l'interruttore e il gioco non è già aperto dalla schermata Home.
        Le istruzioni cambiano da sole secondo il dispositivo: non esiste una
@@ -367,7 +399,7 @@
 // JavaScript vecchio.
 (function () {
   var avviato = false;
-  var V = '9';  // stessa versione della import map qui sopra
+  var V = '10';  // stessa versione della import map qui sopra
   var codice = ['index.html', 'styles.css'].concat(
     ['main','game','sim','render','palette','constants','audio','ui','net','rng','config','install','biometric']
       .map(function (m) { return 'js/' + m + '.js?v=' + V; }));
@@ -426,22 +458,22 @@
 <script type="importmap">
 {
   "imports": {
-      "./js/main.js": "./js/main.js?v=9",
-      "./js/game.js": "./js/game.js?v=9",
-      "./js/sim.js": "./js/sim.js?v=9",
-      "./js/render.js": "./js/render.js?v=9",
-      "./js/palette.js": "./js/palette.js?v=9",
-      "./js/constants.js": "./js/constants.js?v=9",
-      "./js/audio.js": "./js/audio.js?v=9",
-      "./js/ui.js": "./js/ui.js?v=9",
-      "./js/net.js": "./js/net.js?v=9",
-      "./js/rng.js": "./js/rng.js?v=9",
-      "./js/config.js": "./js/config.js?v=9",
-      "./js/install.js": "./js/install.js?v=9",
-      "./js/biometric.js": "./js/biometric.js?v=9"
+      "./js/main.js": "./js/main.js?v=10",
+      "./js/game.js": "./js/game.js?v=10",
+      "./js/sim.js": "./js/sim.js?v=10",
+      "./js/render.js": "./js/render.js?v=10",
+      "./js/palette.js": "./js/palette.js?v=10",
+      "./js/constants.js": "./js/constants.js?v=10",
+      "./js/audio.js": "./js/audio.js?v=10",
+      "./js/ui.js": "./js/ui.js?v=10",
+      "./js/net.js": "./js/net.js?v=10",
+      "./js/rng.js": "./js/rng.js?v=10",
+      "./js/config.js": "./js/config.js?v=10",
+      "./js/install.js": "./js/install.js?v=10",
+      "./js/biometric.js": "./js/biometric.js?v=10"
   }
 }
 </script>
-<script type="module" src="js/main.js?v=9"></script>
+<script type="module" src="js/main.js?v=10"></script>
 </body>
 </html>

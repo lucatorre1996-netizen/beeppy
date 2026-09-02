@@ -174,6 +174,8 @@ function client() {
 function human(err) {
   const m = (err && (err.message || String(err))) || 'errore sconosciuto';
   const l = m.toLowerCase();
+  if (l.includes('row-level security') || l.includes('violates row-level'))
+    return 'Permesso mancante sul database: va eseguito supabase/schema.sql aggiornato.';
   if (l.includes('email obbligatoria'))
     return 'L\'email è obbligatoria.';
   if (l.includes('contatti_email_check') || l.includes('email ~*'))
@@ -410,6 +412,17 @@ export async function submitScore(res) {
   }
 }
 
+// Manca l'email a questo utente?
+//   true  -> sì, e va chiesta prima di lasciarlo giocare
+//   false -> ce l'ha, oppure non possiamo saperlo (tabella non ancora creata,
+//            rete assente). In dubbio non si blocca nessuno.
+export async function mancaEmail() {
+  if (!ONLINE || !state.user) return false;
+  const r = await miContatti();
+  if (!r.ok) return false;              // non lo sappiamo: si gioca
+  return !r.dati || !r.dati.email;
+}
+
 // ------------------------------------------------------------ foto profilo
 //
 // Il file si chiama <identificativo utente>.jpg e la policy del bucket verifica
@@ -517,16 +530,19 @@ export async function salvaContatti(dati) {
   if (problema) return { ok: false, error: problema };
   try {
     const c = await client();
+    // upsert e non update: chi si è iscritto prima che l'email fosse
+    // obbligatoria non ha ancora una riga, e un update su zero righe
+    // "riuscirebbe" senza salvare niente.
     const { error } = await c
       .from('contatti')
-      .update({
+      .upsert({
+        user_id: state.user.id,
         nome: (dati.nome || '').trim() || null,
         cognome: (dati.cognome || '').trim() || null,
         email: dati.email.trim(),
         telefono: (dati.telefono || '').trim() || null,
         aggiornato: new Date().toISOString(),
-      })
-      .eq('user_id', state.user.id);
+      }, { onConflict: 'user_id' });
     if (error) throw error;
     return { ok: true };
   } catch (e) {

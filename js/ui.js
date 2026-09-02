@@ -14,6 +14,9 @@ let volevaGiocare = false; // se l'accesso arriva da un tentativo di giocare
 let ultimoPin = null;      // solo in memoria: serve per attivare la biometria
                            // subito dopo l'accesso, senza richiedere il PIN
 let pannello = 'form';     // form | codice | recupero | profilo | nobackend
+let emailVerificata = false; // una volta accertato che l'email c'è, non si
+                             // richiede più: "Rigioca" deve partire subito,
+                             // senza una chiamata di rete davanti
 
 export function initUI(g) {
   game = g;
@@ -67,6 +70,7 @@ export function initUI(g) {
   $('btn-signout').addEventListener('click', async () => {
     await net.signOut();
     ultimoPin = null;
+    emailVerificata = false;
     syncAccountChip();
     game.toMenu();
     showScreen('menu');
@@ -103,6 +107,7 @@ export function initUI(g) {
   $('btn-recupero-annulla').addEventListener('click', () => { pannello = 'form'; openAuth(); });
   $('recupero-form').addEventListener('submit', inviaRecupero);
   $('dati-form').addEventListener('submit', salvaDati);
+  $('email-form').addEventListener('submit', salvaEmailMancante);
   $('avatar-scegli').addEventListener('click', () => $('avatar-file').click());
   $('avatar-file').addEventListener('change', scegliFoto);
   $('avatar-rimuovi').addEventListener('click', togliFoto);
@@ -167,6 +172,19 @@ async function startGame() {
   // registrato si vedrebbe chiedere di registrarsi: la sessione salvata viene
   // ripristinata in modo asincrono.
   await net.whenReady();
+
+  // Chi si è iscritto prima che l'email fosse obbligatoria la inserisce ora.
+  // Il controllo sta qui e non nel database perché non è una questione di
+  // sicurezza ma di completezza dei dati: bloccare l'invio del punteggio lato
+  // server sembrerebbe un guasto a chi gioca.
+  if (net.state.user && !emailVerificata) {
+    if (await net.mancaEmail()) {
+      mostraChiediEmail();
+      return;
+    }
+    emailVerificata = true;
+  }
+
   if (!net.state.user) {
     volevaGiocare = true;
     openAuth(giaConosciuto() ? 'Accedi per giocare' : 'Registrati per giocare',
@@ -180,7 +198,7 @@ async function startGame() {
 }
 
 export function showScreen(name) {
-  for (const id of ['screen-menu', 'screen-ready', 'screen-over', 'screen-install']) {
+  for (const id of ['screen-menu', 'screen-ready', 'screen-over', 'screen-install', 'screen-email']) {
     $(id).classList.toggle('is-on', id === `screen-${name}`);
   }
   // mentre si vola i pulsanti in alto si spostano di mezzo: un tap accidentale
@@ -558,6 +576,62 @@ async function controllaInstallazione() {
   window.addEventListener('appinstalled', () => location.reload());
 }
 
+function mostraChiediEmail() {
+  $('email-errore').classList.add('hidden');
+  showScreen('email');
+  setTimeout(() => $('e-email').focus(), 150);
+}
+
+async function salvaEmailMancante(e) {
+  e.preventDefault();
+  const err = $('email-errore');
+  const btn = $('email-salva');
+  err.classList.add('hidden');
+  btn.disabled = true;
+  btn.textContent = 'Salvo...';
+
+  const out = await net.salvaContatti({
+    email: $('e-email').value,
+    nome: $('e-nome').value,
+    cognome: $('e-cognome').value,
+  });
+
+  btn.disabled = false;
+  btn.textContent = 'Salva e gioca';
+  if (!out.ok) {
+    err.textContent = out.error;
+    err.classList.remove('hidden');
+
+    // Se il salvataggio è impossibile per un permesso mancante sul database,
+    // la colpa non è di chi sta giocando: tenerlo chiuso fuori sarebbe punirlo
+    // per un errore di chi ha pubblicato. Si sblocca e si gioca, il dato lo si
+    // chiederà la prossima volta.
+    if (/permesso mancante|row-level/i.test(out.error)) {
+      console.warn('[beeppy] contatti non salvabili: schema non aggiornato. Sblocco il gioco.');
+      emailVerificata = true;
+      setTimeout(() => {
+        showScreen('none');
+        game.arm();
+        showScreen('ready');
+      }, 2500);
+    }
+    return;
+  }
+  // salvata: si gioca subito, senza far ripassare dal menu
+  emailVerificata = true;
+  showScreen('none');
+  game.arm();
+  showScreen('ready');
+}
+
+// Al ritorno al menu ricontrolliamo: se l'email manca ancora, la si chiede
+// prima che tocchi Gioca, così non scopre l'ostacolo a metà strada.
+async function controllaEmailAlMenu() {
+  if (!net.state.user || emailVerificata) return;
+  if (await net.mancaEmail()) mostraChiediEmail();
+  else emailVerificata = true;
+}
+
 // L'annuncio lo scrive l'amministratore dalla sua pagina, e compare nel menu
 // a tutti i giocatori.
 async function mostraAnnuncio() {
@@ -872,6 +946,7 @@ function quando(iso) {
 function dopoAccesso() {
   syncAccountChip();
   refreshMenu();
+  controllaEmailAlMenu();
   if (volevaGiocare) {
     volevaGiocare = false;
     closeModal('modal-auth');
