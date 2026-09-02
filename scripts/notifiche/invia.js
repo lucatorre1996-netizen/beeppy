@@ -94,8 +94,25 @@ async function main() {
   console.log(`giocatori: ${giocatori.length}, con notifiche attive: ` +
               giocatori.filter((g) => g.iscrizioni.length).length);
 
+  // Prima gli annunci messi in coda dal pannello di amministrazione: se ce n'è
+  // uno in attesa, questo giro serve a spedire quello.
+  let inCoda = [];
+  try {
+    inCoda = await rest('push_annunci?inviato=is.null&order=creato.asc&limit=1');
+  } catch (e) {
+    // tabella non ancora creata: si va avanti con le notifiche automatiche
+  }
+
   let messaggi;
-  if (TITOLO) {
+  let annuncio = null;
+  if (!TITOLO && inCoda.length) {
+    annuncio = inCoda[0];
+    messaggi = giocatori.filter((g) => g.iscrizioni.length).map((g) => ({
+      user_id: g.user_id, iscrizioni: g.iscrizioni, tipo: 'annuncio',
+      titolo: annuncio.titolo, testo: annuncio.testo,
+    }));
+    console.log(`annuncio in coda: "${annuncio.titolo}"`);
+  } else if (TITOLO) {
     // annuncio a mano: a tutti quelli iscritti, senza le regole di frequenza
     messaggi = giocatori.filter((g) => g.iscrizioni.length).map((g) => ({
       user_id: g.user_id, iscrizioni: g.iscrizioni, tipo: 'annuncio',
@@ -149,10 +166,25 @@ async function main() {
     }
   }
 
+  // L'annuncio spedito va segnato, altrimenti ripartirebbe a ogni giro
+  if (annuncio) {
+    await fetch(`${URL}/rest/v1/push_annunci?id=eq.${annuncio.id}`, {
+      method: 'PATCH',
+      headers: {
+        apikey: SERVIZIO, Authorization: `Bearer ${SERVIZIO}`,
+        'Content-Type': 'application/json', Prefer: 'return=minimal',
+      },
+      body: JSON.stringify({ inviato: new Date().toISOString(), quanti: inviate }),
+    });
+  }
+
   // La posizione va aggiornata per TUTTI, anche per chi non ha ricevuto niente:
   // è il confronto della prossima volta.
   const adesso = new Date().toISOString();
-  const inviati = new Set(messaggi.map((m) => m.user_id));
+  // Gli annunci non consumano il limite dei due giorni: sono eventi eccezionali,
+  // e non è giusto che rubino la notifica automatica di chi ne avrebbe bisogno.
+  const inviati = new Set(
+    messaggi.filter((m) => m.tipo !== 'annuncio').map((m) => m.user_id));
   await scrivi('push_stato', giocatori.map((g) => {
     const s = { user_id: g.user_id, posizione: g.posizione };
     if (inviati.has(g.user_id)) {

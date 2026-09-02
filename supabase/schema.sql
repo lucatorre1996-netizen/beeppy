@@ -780,3 +780,67 @@ create table if not exists public.push_stato (
 
 alter table public.push_stato enable row level security;
 -- nessuna policy: ci accede solo chi spedisce, con la chiave di servizio
+
+-- ------------------------------------------- annunci in coda e riepilogo push
+--  L'amministratore scrive un annuncio dal pannello; lo spedisce il lavoro
+--  programmato al giro successivo. Il pannello non può spedire da sé: firmare
+--  una notifica richiede la chiave privata, che nel browser sarebbe leggibile.
+create table if not exists public.push_annunci (
+  id      bigserial primary key,
+  titolo  text not null check (char_length(titolo) between 1 and 60),
+  testo   text not null check (char_length(testo) <= 160),
+  creato  timestamptz not null default now(),
+  inviato timestamptz,
+  quanti  int
+);
+
+alter table public.push_annunci enable row level security;
+
+drop policy if exists "annunci leggibili dagli admin" on public.push_annunci;
+create policy "annunci leggibili dagli admin"
+  on public.push_annunci for select using (public.is_admin());
+-- scrittura solo via admin_accoda_annuncio(); l'invio li aggiorna con la chiave
+-- di servizio, che scavalca le policy
+
+create or replace function public.admin_accoda_annuncio(p_titolo text, p_testo text)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'non autorizzato';
+  end if;
+  insert into public.push_annunci (titolo, testo) values (trim(p_titolo), trim(p_testo));
+end;
+$$;
+
+revoke execute on function public.admin_accoda_annuncio(text, text) from anon, public;
+grant  execute on function public.admin_accoda_annuncio(text, text) to authenticated;
+
+--  Numeri per il pannello: quante persone riceveranno le notifiche e cosa è
+--  già partito.
+create or replace function public.admin_push_riepilogo()
+returns table (
+  iscritti        int,
+  dispositivi     int,
+  ultimo_invio    timestamptz,
+  annunci_in_coda int
+)
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'non autorizzato';
+  end if;
+  return query select
+    (select count(distinct user_id)::int from public.push_iscrizioni),
+    (select count(*)::int from public.push_iscrizioni),
+    (select max(ultima_inviata) from public.push_stato),
+    (select count(*)::int from public.push_annunci where inviato is null);
+end;
+$$;
+
+revoke execute on function public.admin_push_riepilogo() from anon, public;
+grant  execute on function public.admin_push_riepilogo() to authenticated;

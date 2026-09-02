@@ -13,7 +13,7 @@ export const NICK_DOMAIN = 'beeppy.play';
 // È pubblica per definizione: la spedisce il browser a ogni iscrizione. La
 // gemella privata sta nei segreti di GitHub e non deve mai finire qui.
 // Finché è vuota, le notifiche restano semplicemente spente.
-export const VAPID_PUBLIC_KEY = '';
+export const VAPID_PUBLIC_KEY = 'BORM2lHgGb7Ga_NNVmRagfpi304fNvZrcDHRUCq24N_xCeINjqxcG_TXZw3X9qKCbICrIvDIwPKU5W31pUca_mA';
 
 export const ONLINE = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 export const PUSH_ATTIVE = Boolean(VAPID_PUBLIC_KEY);

@@ -17,7 +17,11 @@ name: Notifiche ai giocatori
 
 on:
   schedule:
-    - cron: '0 17 * * *'    # ogni giorno alle 19:00 italiane (18:00 d'inverno)
+    # Ogni due ore: non per mandare più notifiche — quelle hanno i loro limiti
+    # e restano una ogni due giorni per persona — ma perché un annuncio messo in
+    # coda dal pannello parta entro un tempo ragionevole. Fra le 23 e le 8 il
+    # lavoro gira ma non spedisce nulla: lo decide decidi.js.
+    - cron: '5 */2 * * *'
   workflow_dispatch:
     inputs:
       titolo:

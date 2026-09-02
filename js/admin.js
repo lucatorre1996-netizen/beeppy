@@ -11,7 +11,11 @@
 //    amministratore non butta fuori il giocatore e viceversa: sono due identità
 //    separate anche nella memoria del browser.
 
-import { SUPABASE_URL, SUPABASE_ANON_KEY, ONLINE } from './config.js';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, ONLINE, PUSH_ATTIVE } from './config.js';
+// Le descrizioni arrivano dallo stesso file che decide gli invii: se stessero
+// in due posti, la panoramica mostrata qui e le notifiche spedite davvero prima
+// o poi direbbero cose diverse.
+import { DESCRIZIONI, LIMITI } from '../scripts/notifiche/decidi.js';
 
 const $ = (id) => document.getElementById(id);
 let sb = null;
@@ -193,6 +197,8 @@ async function aggiorna() {
   $('registrazioni').checked = (conf.registrazioni_aperte || 'si') === 'si';
   $('obbliga-installazione').checked = (conf.richiedi_installazione || 'no') === 'si';
 
+  riempiPush();
+
   const righe = gio.data || [];
   $('lista').innerHTML = righe.length ? righe.map((r) => `
     <li data-id="${r.id}">
@@ -297,6 +303,68 @@ async function provaEmail() {
     'ancora configurato su Supabase.';
 }
 
+// ------------------------------------------------------------ notifiche
+
+async function riempiPush() {
+  $('link-actions').href = 'https://github.com/lucatorre1996-netizen/beeppy/actions';
+
+  $('push-regole').innerHTML = DESCRIZIONI.map((d) => `
+    <li><div class="chi"><b>${d.titolo}</b>
+      <span class="meta">${d.quando}<br>«${d.esempio}»</span></div></li>`).join('');
+  $('push-limiti').innerHTML = LIMITI.map(([k, v]) => `
+    <li><div class="chi"><b>${k}</b><span class="meta">${v}</span></div></li>`).join('');
+
+  if (!PUSH_ATTIVE) {
+    $('push-stato').textContent = 'Chiave pubblica non configurata in js/config.js: ' +
+      'le notifiche sono spente.';
+    $('push-numeri').innerHTML = '';
+    return;
+  }
+  const c = await client();
+  const { data, error } = await c.rpc('admin_push_riepilogo');
+  if (error) {
+    $('push-stato').textContent = String(error.message).includes('Could not find')
+      ? 'Tabelle delle notifiche non ancora create: esegui supabase/schema.sql aggiornato.'
+      : error.message;
+    $('push-numeri').innerHTML = '';
+    return;
+  }
+  const r = Array.isArray(data) ? data[0] : data;
+  $('push-numeri').innerHTML = [
+    [r.iscritti, 'persone iscritte'],
+    [r.dispositivi, 'dispositivi'],
+    [r.annunci_in_coda, 'annunci in coda'],
+  ].map(([v, k]) => `<div class="numero"><b>${v}</b><span>${k}</span></div>`).join('');
+  $('push-stato').textContent = r.ultimo_invio
+    ? 'Ultimo invio: ' + new Date(r.ultimo_invio).toLocaleString('it-IT')
+    : (r.iscritti ? 'Nessuna notifica ancora spedita.'
+                  : 'Nessuno si è ancora iscritto: le proponiamo a fine partita.');
+}
+
+async function accodaAnnuncio() {
+  const b = $('accoda-annuncio');
+  const titolo = $('annuncio-titolo').value.trim();
+  const testo = $('annuncio-testo').value.trim();
+  if (!titolo) { esitoPush('Serve almeno il titolo.', true); return; }
+  b.disabled = true;
+  b.textContent = 'Metto in coda…';
+  const c = await client();
+  const { error } = await c.rpc('admin_accoda_annuncio', { p_titolo: titolo, p_testo: testo });
+  b.disabled = false;
+  b.textContent = 'Metti in coda';
+  if (error) { esitoPush(error.message, true); return; }
+  $('annuncio-titolo').value = '';
+  $('annuncio-testo').value = '';
+  esitoPush('Annuncio in coda: partirà al prossimo giro, entro due ore.');
+  riempiPush();
+}
+
+function esitoPush(testo, cattivo) {
+  const e = $('esito-push');
+  e.textContent = testo;
+  e.className = 'esito' + (cattivo ? ' cattivo' : '');
+}
+
 async function salvaConfig() {
   const b = $('salva');
   b.disabled = true;
@@ -328,6 +396,7 @@ if (!ONLINE) {
   $('salva').addEventListener('click', salvaConfig);
   $('ricarica').addEventListener('click', aggiorna);
   $('prova-email').addEventListener('click', provaEmail);
+  $('accoda-annuncio').addEventListener('click', accodaAnnuncio);
 
   // se c'è già una sessione admin salvata, si entra diretti
   client().then(async (c) => {

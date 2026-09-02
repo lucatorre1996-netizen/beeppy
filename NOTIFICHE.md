@@ -18,8 +18,10 @@ Vengono prima di ogni singola notifica, e servono a non farsi disinstallare:
 
 ## Le notifiche automatiche
 
-Il controllo gira **una volta al giorno alle 19:00** italiane. In ordine di
-precedenza: se una persona ricade in più casi, riceve solo il primo.
+Il controllo gira **ogni due ore**. Non per mandare più notifiche — i limiti
+restano quelli sopra — ma perché un annuncio messo in coda dal pannello parta
+entro un tempo ragionevole. In ordine di precedenza: se una persona ricade in
+più casi, riceve solo il primo.
 
 | # | Quando arriva | Cosa dice |
 | --- | --- | --- |
@@ -34,9 +36,19 @@ verso il promemoria di servizio.
 
 ## Gli annunci scritti a mano
 
-Da GitHub → **Actions** → *Notifiche ai giocatori* → **Run workflow**: si
-inserisce titolo e testo, si spunta *manda*, e partono a tutti gli iscritti.
-Questi **saltano il limite dei due giorni**, quindi vanno usati con parsimonia.
+Due strade:
+
+- **Dal pannello di amministrazione** (`/admin.html`, sezione Notifiche): si
+  scrive titolo e testo e si mette in coda. Parte al giro successivo, quindi
+  entro due ore.
+- **Subito, da GitHub** → **Actions** → *Notifiche ai giocatori* → **Run
+  workflow**: si inserisce titolo e testo, si spunta *manda*, e partono
+  immediatamente.
+
+Gli annunci **saltano il limite dei due giorni** (sono eventi eccezionali) ma
+**non lo consumano**: chi riceve un annuncio oggi può ricevere domani la sua
+notifica automatica. Non sarebbe giusto che un avviso di servizio rubasse il
+posto a un "ti hanno superato".
 
 Senza spuntare *manda*, il lavoro dice soltanto cosa avrebbe spedito: comodo per
 controllare prima.

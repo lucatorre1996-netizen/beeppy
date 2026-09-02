@@ -14,6 +14,32 @@ const GIORNO = 24 * 3600 * 1000;
 
 export const TIPI = ['superato', 'inattivo', 'profilo', 'settimanale'];
 
+// Descrizione delle regole, in un posto solo. La legge anche il pannello di
+// amministrazione: se la panoramica mostrata e le regole applicate stessero in
+// due file diversi, prima o poi direbbero cose diverse — e chi guarda il
+// pannello si fiderebbe di quella sbagliata.
+export const LIMITI = [
+  ['Massimo per persona', 'una notifica ogni 2 giorni'],
+  ['Quante per volta', 'una sola, la più utile fra quelle applicabili'],
+  ['Silenzio notturno', 'dalle 23 alle 8 non parte niente'],
+  ['Chi sta giocando', 'chi ha giocato nelle ultime 6 ore non viene disturbato'],
+];
+
+export const DESCRIZIONI = [
+  { tipo: 'superato', titolo: 'Ti hanno superato',
+    quando: 'quando qualcuno ti passa in classifica',
+    esempio: 'Pueblo ti ha passato: sei 3° in classifica.' },
+  { tipo: 'inattivo', titolo: 'Beeppy ti aspetta',
+    quando: 'dopo 3 giorni senza giocare (testo diverso oltre i 14)',
+    esempio: 'Sono 3 giorni che non giochi. Ti va una partita?' },
+  { tipo: 'profilo', titolo: 'Mettici la faccia',
+    quando: 'a chi ha giocato almeno 5 partite e non ha una foto — una volta sola',
+    esempio: 'Aggiungi una foto al profilo: comparirà accanto al tuo nome.' },
+  { tipo: 'settimanale', titolo: 'Nuova settimana',
+    quando: 'il lunedì, a chi è in classifica',
+    esempio: "Sei 4° con 50. Regge un'altra settimana?" },
+];
+
 export function decidi(giocatori, adesso = Date.now(), ora = null) {
   const oraDelGiorno = ora !== null ? ora : new Date(adesso).getHours();
   if (oraDelGiorno >= 23 || oraDelGiorno < 8) return [];

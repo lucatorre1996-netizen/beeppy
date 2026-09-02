@@ -176,6 +176,35 @@
       <p id="esito" class="esito nascosto"></p>
     </div>
 
+    <h2>Notifiche</h2>
+    <div id="push-numeri" class="numeri"></div>
+
+    <div class="carta" style="margin-top:10px">
+      <p id="push-stato" class="chi-sei" style="margin:0 0 10px"></p>
+
+      <label for="annuncio-titolo">Annuncio a tutti — titolo</label>
+      <input id="annuncio-titolo" type="text" maxlength="60" placeholder="Torneo di stasera">
+      <label for="annuncio-testo">Testo</label>
+      <input id="annuncio-testo" type="text" maxlength="160" placeholder="Alle 21 si vola. Ci sei?">
+      <div class="barra">
+        <button id="accoda-annuncio" class="cresci" type="button">Metti in coda</button>
+      </div>
+      <p id="esito-push" class="esito nascosto"></p>
+      <p class="avviso">
+        L'annuncio parte al prossimo giro del lavoro programmato, che gira ogni due
+        ore. Per mandarlo subito:
+        <a id="link-actions" href="#" target="_blank" rel="noopener">apri le Actions su GitHub</a>
+        e avvia <i>Notifiche ai giocatori</i> spuntando <i>manda</i>.
+        Da questo pannello non si può spedire: firmare una notifica richiede una
+        chiave privata, e nel browser sarebbe leggibile da chiunque.
+      </p>
+    </div>
+
+    <h3 style="margin:22px 0 6px;font-size:14px">Quando arrivano da sole</h3>
+    <ul id="push-regole" class="lista"></ul>
+    <h3 style="margin:22px 0 6px;font-size:14px">Limiti che valgono per tutte</h3>
+    <ul id="push-limiti" class="lista"></ul>
+
     <h2>Invio email (SMTP)</h2>
     <div class="carta">
       <p style="margin:0 0 4px">
@@ -227,6 +256,6 @@
   </section>
 
 </main>
-<script type="module" src="js/admin.js?v=11"></script>
+<script type="module" src="js/admin.js?v=12"></script>
 </body>
 </html>
