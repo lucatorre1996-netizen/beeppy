@@ -9,12 +9,21 @@ Ordinate per urgenza: la P0 blocca l'invito agli amici, il resto no.
 
 - [x] ~~Cancellare l'account di collaudo `verifica_prod`~~ — fatto.
 - [ ] **Eseguire il nuovo `supabase/schema.sql`** nel SQL Editor. Ora serve per
-      quattro cose, non più una: `delete_my_account()`, il codice di recupero
+      sei cose, non più una: `delete_my_account()`, il codice di recupero
       (`set_recovery_code` e `reset_pin_with_code`), la tabella `games` dello
-      storico e `submit_score()` che ci scrive dentro. Finché non lo esegui, quelle
+      storico, `submit_score()` che ci scrive dentro, le funzioni dell'area
+      amministratore e la tabella `app_config`. Finché non lo esegui, quelle
       funzioni rispondono "Funzione non ancora installata" — verificato, falliscono
       in modo comprensibile e non bloccano il gioco. Rieseguire l'intero file è
       sicuro: è tutto `create or replace` e `if not exists`.
+- [ ] **Diventare amministratore**: dopo lo SQL, esegui una volta
+      `update public.profiles set is_admin = true where lower(nickname) = 'lucatorre';`
+      È volutamente manuale: dall'app non ci si può auto-promuovere.
+- [ ] **Configurare l'SMTP** in Supabase (Project Settings → Authentication → SMTP),
+      non nell'app: una password SMTP nel frontend è leggibile da chiunque. Con
+      Gmail serve una "password per le app" (Google → Sicurezza → Verifica in due
+      passaggi). **Serve solo se vuoi il recupero via email**: quello con codice
+      funziona già senza.
 - [ ] **Provare il recupero PIN per intero** dopo aver eseguito lo SQL: registrare
       un account di prova, salvare il codice, uscire, rimettere il PIN col codice.
       Di questo percorso ho potuto verificare solo interfaccia, generatore di codici
@@ -48,6 +57,13 @@ Ordinate per urgenza: la P0 blocca l'invito agli amici, il resto no.
       SHA-256; cinque tentativi sbagliati bloccano il nickname per un'ora, e la
       risposta è identica per nickname inesistente e codice errato, così non si può
       scoprire quali nickname esistono.
+
+- [x] ~~Area amministratore~~ — fatta, coi permessi controllati dal database:
+      elenco giocatori con azzeramento punteggio ed eliminazione, numeri d'insieme
+      (iscritti, partite, nuovi oggi), annuncio mostrato nel menu e interruttore
+      per chiudere le registrazioni. Nascondere i pulsanti non protegge niente:
+      ogni funzione ricontrolla da sé chi la chiama, e l'interruttore delle
+      registrazioni è applicato dal trigger, non dall'interfaccia.
 
 ## P1 — prodotto
 

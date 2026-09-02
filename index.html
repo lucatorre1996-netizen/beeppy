@@ -76,6 +76,7 @@
       <button id="btn-play" class="btn btn-primary">Gioca</button>
       <button id="btn-leaderboard" class="btn">Classifica</button>
     </div>
+    <p id="annuncio" class="annuncio hidden"></p>
     <p id="login-note" class="note hidden">Per giocare serve un account: il nickname è il nome che
        finisce in classifica.</p>
   </section>
@@ -218,6 +219,31 @@
         </form>
       </div>
 
+      <!-- area amministratore: compare solo a chi lo è davvero, e i permessi
+           li controlla il database a ogni chiamata, non questo nascondere -->
+      <div id="auth-admin" class="hidden">
+        <div id="admin-numeri" class="profilo-griglia"></div>
+
+        <div class="admin-sezione">
+          <span class="stat-k">Annuncio nel menu</span>
+          <input id="admin-annuncio" type="text" maxlength="200"
+                 placeholder="Vuoto = nessun annuncio">
+          <label class="admin-riga">
+            <input id="admin-registrazioni" type="checkbox">
+            <span>Registrazioni aperte</span>
+          </label>
+          <button id="btn-admin-salva" class="btn" type="button">Salva configurazione</button>
+          <p id="admin-esito" class="note"></p>
+        </div>
+
+        <div class="admin-sezione">
+          <span class="stat-k">Giocatori</span>
+          <ul id="admin-lista" class="admin-lista"></ul>
+        </div>
+
+        <button id="btn-admin-chiudi" class="btn btn-ghost" type="button">Torna al profilo</button>
+      </div>
+
       <div id="auth-logged" class="hidden">
         <div class="profilo-testa">
           <canvas id="profilo-avatar" width="150" height="150" aria-hidden="true"></canvas>
@@ -249,6 +275,7 @@
 
         <button id="btn-bio-on" class="btn hidden" type="button">Attiva Face ID</button>
         <p id="bio-note" class="note hidden"></p>
+        <button id="btn-admin" class="btn hidden" type="button">Area amministratore</button>
         <button id="btn-signout" class="btn">Esci dall'account</button>
         <button id="btn-delete" class="btn btn-danger" type="button">Cancella l'account</button>
       </div>
@@ -295,7 +322,7 @@
 // JavaScript vecchio.
 (function () {
   var avviato = false;
-  var V = '3';  // stessa versione della import map qui sopra
+  var V = '4';  // stessa versione della import map qui sopra
   var codice = ['index.html', 'styles.css'].concat(
     ['main','game','sim','render','palette','constants','audio','ui','net','rng','config','install','biometric']
       .map(function (m) { return 'js/' + m + '.js?v=' + V; }));
@@ -354,22 +381,22 @@
 <script type="importmap">
 {
   "imports": {
-      "./js/main.js": "./js/main.js?v=3",
-      "./js/game.js": "./js/game.js?v=3",
-      "./js/sim.js": "./js/sim.js?v=3",
-      "./js/render.js": "./js/render.js?v=3",
-      "./js/palette.js": "./js/palette.js?v=3",
-      "./js/constants.js": "./js/constants.js?v=3",
-      "./js/audio.js": "./js/audio.js?v=3",
-      "./js/ui.js": "./js/ui.js?v=3",
-      "./js/net.js": "./js/net.js?v=3",
-      "./js/rng.js": "./js/rng.js?v=3",
-      "./js/config.js": "./js/config.js?v=3",
-      "./js/install.js": "./js/install.js?v=3",
-      "./js/biometric.js": "./js/biometric.js?v=3"
+      "./js/main.js": "./js/main.js?v=4",
+      "./js/game.js": "./js/game.js?v=4",
+      "./js/sim.js": "./js/sim.js?v=4",
+      "./js/render.js": "./js/render.js?v=4",
+      "./js/palette.js": "./js/palette.js?v=4",
+      "./js/constants.js": "./js/constants.js?v=4",
+      "./js/audio.js": "./js/audio.js?v=4",
+      "./js/ui.js": "./js/ui.js?v=4",
+      "./js/net.js": "./js/net.js?v=4",
+      "./js/rng.js": "./js/rng.js?v=4",
+      "./js/config.js": "./js/config.js?v=4",
+      "./js/install.js": "./js/install.js?v=4",
+      "./js/biometric.js": "./js/biometric.js?v=4"
   }
 }
 </script>
-<script type="module" src="js/main.js?v=3"></script>
+<script type="module" src="js/main.js?v=4"></script>
 </body>
 </html>

@@ -542,3 +542,44 @@ code {
 .storico-lista li:nth-child(odd) { background: rgba(43, 33, 24, 0.04); }
 .storico-lista b { font-size: 16px; font-weight: 800; }
 .storico-quando { color: var(--ink-soft); font-size: 13px; }
+
+/* ------------------------------------------------ area amministratore */
+.admin-sezione { margin-top: 18px; }
+.admin-sezione .btn { width: 100%; margin-top: 8px; }
+#admin-annuncio {
+  width: 100%; min-height: 46px; margin-top: 6px; padding: 0 12px;
+  border: 2px solid var(--panel-line); border-radius: 12px;
+  background: #fff; font: inherit; font-size: 15px; color: var(--ink);
+  -webkit-user-select: text; user-select: text;
+}
+#admin-annuncio:focus { outline: none; border-color: var(--honey); }
+.admin-riga { display: flex; align-items: center; gap: 9px; margin-top: 10px; font-weight: 700; font-size: 15px; }
+.admin-riga input { width: 20px; height: 20px; accent-color: var(--honey-dark); }
+
+.admin-lista { list-style: none; margin: 8px 0 0; padding: 0; max-height: 260px; overflow-y: auto; }
+.admin-lista li {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 10px; border-radius: 12px; font-size: 14px;
+}
+.admin-lista li:nth-child(odd) { background: rgba(43, 33, 24, 0.045); }
+.admin-nome { flex: 1; min-width: 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-punti { font-weight: 800; }
+.admin-azione {
+  border: 0; border-radius: 9px; padding: 5px 9px; cursor: pointer;
+  background: rgba(43, 33, 24, 0.1); color: var(--ink);
+  font: inherit; font-size: 12px; font-weight: 700;
+}
+.admin-azione.rossa { background: #ffe3e0; color: #a3231b; }
+.admin-badge { font-size: 11px; font-weight: 800; color: var(--honey-dark); }
+
+/* annuncio mostrato nel menu */
+.annuncio {
+  margin: 0 0 4px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(255, 253, 246, 0.9);
+  box-shadow: var(--shadow);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}

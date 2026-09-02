@@ -66,6 +66,28 @@ create policy "ognuno vede le proprie partite"
   on public.games for select using (auth.uid() = user_id);
 -- nessuna policy di scrittura: le righe le mette submit_score()
 
+-- --------------------------------------------- configurazione del gioco
+--  Valori che si cambiano senza ripubblicare il sito. Leggibili da tutti
+--  (servono al gioco), scrivibili solo dagli amministratori.
+create table if not exists public.app_config (
+  chiave     text primary key,
+  valore     text,
+  aggiornato timestamptz not null default now()
+);
+
+alter table public.app_config enable row level security;
+
+drop policy if exists "configurazione leggibile da tutti" on public.app_config;
+create policy "configurazione leggibile da tutti"
+  on public.app_config for select using (true);
+-- nessuna policy di scrittura: si passa da admin_set_config()
+
+insert into public.app_config (chiave, valore) values
+  ('annuncio', ''),
+  ('registrazioni_aperte', 'si')
+on conflict (chiave) do nothing;
+
+
 
 -- ------------------------------------------------- nickname: filtro anti-spam
 --  La classifica è pubblica, quindi il nickname è il posto dove arriva lo spam
@@ -107,7 +129,16 @@ as $$
 declare
   v_nick text := coalesce(new.raw_user_meta_data->>'nickname',
                           'ape_' || substr(new.id::text, 1, 6));
+  v_aperte text;
 begin
+  -- L'interruttore "registrazioni aperte" dell'area admin va fatto rispettare
+  -- qui, non nell'interfaccia: un client manomesso salterebbe qualsiasi
+  -- controllo scritto nel browser.
+  select valore into v_aperte from public.app_config where chiave = 'registrazioni_aperte';
+  if coalesce(v_aperte, 'si') <> 'si' then
+    raise exception 'registrazioni chiuse';
+  end if;
+
   if not public.nickname_ok(v_nick) then
     raise exception 'nickname non ammesso: %', v_nick;
   end if;
@@ -363,3 +394,154 @@ end;
 $$;
 
 grant execute on function public.reset_pin_with_code(text, text, text) to anon, authenticated;
+
+-- =====================================================================
+--  AREA AMMINISTRATORE
+--
+--  Principio: i permessi stanno QUI, non nell'interfaccia. Il pannello admin
+--  nel gioco si limita a nascondere dei pulsanti, e nascondere non è
+--  proteggere: chiunque può modificare il JavaScript nel proprio browser.
+--  Ogni funzione qui sotto ricontrolla da sé che chi chiama sia amministratore,
+--  quindi un client manomesso non ottiene niente.
+-- =====================================================================
+
+alter table public.profiles add column if not exists is_admin boolean not null default false;
+
+-- COME DIVENTARE AMMINISTRATORE: esegui una volta questa riga, mettendo il tuo
+-- nickname. È volutamente manuale — non esiste nessun modo di auto-promuoversi
+-- dall'app.
+--
+--   update public.profiles set is_admin = true where lower(nickname) = 'lucatorre';
+
+create or replace function public.is_admin()
+returns boolean
+language sql
+security definer set search_path = public
+stable
+as $$
+  select coalesce((select is_admin from public.profiles where id = auth.uid()), false);
+$$;
+
+grant execute on function public.is_admin() to authenticated;
+
+-- ------------------------------------------------ elenco dei giocatori
+create or replace function public.admin_players()
+returns table (
+  id           uuid,
+  nickname     text,
+  best_score   int,
+  games_played int,
+  total_flaps  bigint,
+  ultima       timestamptz,
+  iscritto     timestamptz,
+  admin        boolean
+)
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'non autorizzato';
+  end if;
+  return query
+    select p.id, p.nickname, coalesce(s.best_score, 0), coalesce(s.games_played, 0),
+           coalesce(s.total_flaps, 0), s.last_submit, p.created_at, p.is_admin
+      from public.profiles p
+      left join public.scores s on s.user_id = p.id
+     order by coalesce(s.best_score, 0) desc, p.created_at asc;
+end;
+$$;
+
+revoke execute on function public.admin_players() from anon, public;
+grant  execute on function public.admin_players() to authenticated;
+
+-- ------------------------------- cancellare un giocatore (spam, abusi)
+create or replace function public.admin_delete_user(p_id uuid)
+returns void
+language plpgsql
+security definer set search_path = public, auth
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'non autorizzato';
+  end if;
+  if p_id = auth.uid() then
+    raise exception 'per cancellare il tuo account usa il profilo, non l''area admin';
+  end if;
+  delete from auth.users where id = p_id;
+end;
+$$;
+
+revoke execute on function public.admin_delete_user(uuid) from anon, public;
+grant  execute on function public.admin_delete_user(uuid) to authenticated;
+
+-- ------------------------- azzerare il punteggio di un sospetto imbroglione
+--  Più proporzionato della cancellazione: l'account resta, il record no.
+create or replace function public.admin_reset_score(p_id uuid)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'non autorizzato';
+  end if;
+  update public.scores set best_score = 0, updated_at = now() where user_id = p_id;
+  delete from public.games where user_id = p_id;
+end;
+$$;
+
+revoke execute on function public.admin_reset_score(uuid) from anon, public;
+grant  execute on function public.admin_reset_score(uuid) to authenticated;
+
+create or replace function public.admin_set_config(p_chiave text, p_valore text)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'non autorizzato';
+  end if;
+  if p_chiave not in ('annuncio', 'registrazioni_aperte') then
+    raise exception 'chiave non ammessa';
+  end if;
+  if char_length(coalesce(p_valore, '')) > 200 then
+    raise exception 'valore troppo lungo';
+  end if;
+  insert into public.app_config (chiave, valore, aggiornato)
+       values (p_chiave, p_valore, now())
+  on conflict (chiave) do update set valore = excluded.valore, aggiornato = now();
+end;
+$$;
+
+revoke execute on function public.admin_set_config(text, text) from anon, public;
+grant  execute on function public.admin_set_config(text, text) to authenticated;
+
+-- ------------------------------------------------------ numeri d'insieme
+create or replace function public.admin_stats()
+returns table (
+  giocatori      int,
+  in_classifica  int,
+  partite_totali bigint,
+  partite_oggi   bigint,
+  nuovi_oggi     int
+)
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'non autorizzato';
+  end if;
+  return query select
+    (select count(*)::int from public.profiles),
+    (select count(*)::int from public.scores where best_score > 0),
+    (select coalesce(sum(games_played), 0)::bigint from public.scores),
+    (select count(*)::bigint from public.games where created_at > now() - interval '1 day'),
+    (select count(*)::int from public.profiles where created_at > now() - interval '1 day');
+end;
+$$;
+
+revoke execute on function public.admin_stats() from anon, public;
+grant  execute on function public.admin_stats() to authenticated;

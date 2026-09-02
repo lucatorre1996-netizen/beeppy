@@ -12,7 +12,7 @@ let authOpenedAt = 0;      // per misurare quanto ci si mette a compilare
 let volevaGiocare = false; // se l'accesso arriva da un tentativo di giocare
 let ultimoPin = null;      // solo in memoria: serve per attivare la biometria
                            // subito dopo l'accesso, senza richiedere il PIN
-let pannello = 'form';     // form | codice | recupero | profilo | nobackend
+let pannello = 'form';     // form | codice | recupero | admin | profilo | nobackend
 
 export function initUI(g) {
   game = g;
@@ -81,6 +81,9 @@ export function initUI(g) {
 
   $('btn-delete').addEventListener('click', cancellaAccount);
   $('link-recupero').addEventListener('click', (e) => { e.preventDefault(); mostraRecupero(); });
+  $('btn-admin').addEventListener('click', () => { pannello = 'admin'; openAuth(); });
+  $('btn-admin-chiudi').addEventListener('click', () => { pannello = 'form'; openAuth(); });
+  $('btn-admin-salva').addEventListener('click', salvaConfigurazione);
   $('btn-recupero-annulla').addEventListener('click', () => { pannello = 'form'; openAuth(); });
   $('recupero-form').addEventListener('submit', inviaRecupero);
   $('btn-codice-fatto').addEventListener('click', () => {
@@ -127,6 +130,7 @@ export function initUI(g) {
   paintSound();
 
   initInstall();
+  mostraAnnuncio();
   syncAccountChip();
   syncLoginNote();
   showScreen('menu');
@@ -272,15 +276,19 @@ function openAuth(titolo, modo) {
   const attivo =
     pannello === 'codice'   ? 'auth-codice'
     : pannello === 'recupero' ? 'auth-recupero'
+    : (pannello === 'admin' && logged) ? 'auth-admin'
     : !configurato          ? 'auth-nobackend'
     : logged                ? 'auth-logged'
     : 'auth-forms';
 
-  for (const id of ['auth-forms', 'auth-recupero', 'auth-codice', 'auth-logged', 'auth-nobackend']) {
+  for (const id of ['auth-forms', 'auth-recupero', 'auth-codice', 'auth-admin', 'auth-logged', 'auth-nobackend']) {
     $(id).classList.toggle('hidden', id !== attivo);
   }
   $('auth-error').classList.add('hidden');
-  if (attivo === 'auth-codice') {
+  if (attivo === 'auth-admin') {
+    $('auth-title').textContent = 'Amministrazione';
+    riempiAdmin();
+  } else if (attivo === 'auth-codice') {
     $('auth-title').textContent = 'Salva questo codice';
   } else if (attivo === 'auth-recupero') {
     $('auth-title').textContent = 'PIN dimenticato';
@@ -483,6 +491,102 @@ function modoPredefinito() {
   return giaConosciuto() ? 'login' : 'signup';
 }
 
+// ------------------------------------------------------------- area admin
+
+async function riempiAdmin() {
+  const numeri = $('admin-numeri');
+  const lista = $('admin-lista');
+  numeri.innerHTML = '';
+  lista.innerHTML = '<li>Carico...</li>';
+  $('admin-esito').textContent = '';
+
+  const [st, gio, cfg] = await Promise.all([net.adminStats(), net.adminGiocatori(), net.leggiConfig()]);
+
+  if (!st.ok) {
+    lista.innerHTML = `<li>${st.error}</li>`;
+    return;
+  }
+  const s = st.stats;
+  numeri.innerHTML = [
+    [s.giocatori, 'iscritti'],
+    [s.in_classifica, 'in classifica'],
+    [s.partite_totali, 'partite'],
+    [s.partite_oggi, 'partite oggi'],
+    [s.nuovi_oggi, 'nuovi oggi'],
+  ].map(([v, k]) => `<div><b>${v}</b><span>${k}</span></div>`).join('');
+
+  $('admin-annuncio').value = cfg.annuncio || '';
+  $('admin-registrazioni').checked = (cfg.registrazioni_aperte || 'si') === 'si';
+
+  if (!gio.ok) {
+    lista.innerHTML = `<li>${gio.error}</li>`;
+    return;
+  }
+  lista.innerHTML = gio.rows.map((r) => `
+    <li data-id="${r.id}">
+      <span class="admin-nome">${escapeHtml(r.nickname)}${r.admin ? ' <span class="admin-badge">ADMIN</span>' : ''}</span>
+      <span class="admin-punti">${r.best_score}</span>
+      <button class="admin-azione" data-azione="azzera">azzera</button>
+      <button class="admin-azione rossa" data-azione="cancella">elimina</button>
+    </li>`).join('');
+
+  lista.querySelectorAll('.admin-azione').forEach((b) => {
+    b.addEventListener('click', () => azioneSuGiocatore(b));
+  });
+}
+
+// Due tocchi anche qui: il primo chiede conferma sul pulsante stesso.
+async function azioneSuGiocatore(b) {
+  const li = b.closest('li');
+  const id = li.dataset.id;
+  const nome = li.querySelector('.admin-nome').textContent.trim();
+  const azione = b.dataset.azione;
+
+  if (b.dataset.armato !== 'si') {
+    b.dataset.armato = 'si';
+    b.textContent = 'confermi?';
+    setTimeout(() => {
+      if (b.dataset.armato === 'si') {
+        b.dataset.armato = '';
+        b.textContent = azione === 'azzera' ? 'azzera' : 'elimina';
+      }
+    }, 5000);
+    return;
+  }
+  b.disabled = true;
+  b.textContent = '...';
+  const out = azione === 'azzera'
+    ? await net.adminAzzeraPunteggio(id)
+    : await net.adminCancellaGiocatore(id);
+  $('admin-esito').textContent = out.ok
+    ? (azione === 'azzera' ? `Punteggio di ${nome} azzerato.` : `${nome} eliminato.`)
+    : out.error;
+  riempiAdmin();
+  refreshMenu();
+}
+
+async function salvaConfigurazione() {
+  const b = $('btn-admin-salva');
+  b.disabled = true;
+  b.textContent = 'Salvo...';
+  const a = await net.adminScriviConfig('annuncio', $('admin-annuncio').value.trim());
+  const r = await net.adminScriviConfig('registrazioni_aperte',
+    $('admin-registrazioni').checked ? 'si' : 'no');
+  b.disabled = false;
+  b.textContent = 'Salva configurazione';
+  $('admin-esito').textContent = (a.ok && r.ok) ? 'Configurazione salvata.' : (a.error || r.error);
+  mostraAnnuncio();
+}
+
+// L'annuncio compare nel menu a tutti i giocatori.
+async function mostraAnnuncio() {
+  const cfg = await net.leggiConfig();
+  const el = $('annuncio');
+  const testo = (cfg.annuncio || '').trim();
+  el.textContent = testo;
+  el.classList.toggle('hidden', !testo);
+}
+
 function mostraRecupero() {
   pannello = 'recupero';
   $('r-nick').value = $('f-nick').value || net.localNick() || '';
@@ -669,6 +773,7 @@ async function riempiProfilo() {
     .join('');
 
   riempiStorico(st.record);
+  net.sonoAdmin().then((si) => $('btn-admin').classList.toggle('hidden', !si));
 }
 
 // Ultime partite: un grafico a barre e l'elenco. Se la tabella non c'è ancora
