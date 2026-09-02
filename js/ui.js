@@ -102,6 +102,7 @@ export function initUI(g) {
   $('link-recupero').addEventListener('click', (e) => { e.preventDefault(); mostraRecupero(); });
   $('btn-recupero-annulla').addEventListener('click', () => { pannello = 'form'; openAuth(); });
   $('recupero-form').addEventListener('submit', inviaRecupero);
+  $('dati-form').addEventListener('submit', salvaDati);
   $('btn-codice-fatto').addEventListener('click', () => {
     pannello = 'form';
     closeModal('modal-auth');
@@ -433,6 +434,8 @@ function setAuthMode(mode) {
   authMode = mode;
   $('tab-login').classList.toggle('is-on', mode === 'login');
   $('tab-signup').classList.toggle('is-on', mode === 'signup');
+  $('campi-registrazione').classList.toggle('hidden', mode !== 'signup');
+  $('f-email').required = mode === 'signup';
   $('auth-submit').textContent = mode === 'login' ? 'Accedi' : 'Crea account';
   $('f-pass').setAttribute('autocomplete', mode === 'login' ? 'current-password' : 'new-password');
   $('auth-error').classList.add('hidden');
@@ -453,8 +456,14 @@ async function submitAuth(e) {
     elapsedMs: Date.now() - authOpenedAt,
   };
   const eraRegistrazione = authMode === 'signup';
+  const contatti = {
+    email: $('f-email').value,
+    nome: $('f-nome').value,
+    cognome: $('f-cognome').value,
+    telefono: $('f-telefono').value,
+  };
   const out = eraRegistrazione
-    ? await net.signUp(nick, pin, guard)
+    ? await net.signUp(nick, pin, contatti, guard)
     : await net.signIn(nick, pin);
 
   btn.disabled = false;
@@ -479,6 +488,7 @@ async function submitAuth(e) {
   ultimoPin = pin;
   $('f-pass').value = '';
   $('f-site').value = '';
+  for (const id of ['f-email', 'f-nome', 'f-cognome', 'f-telefono']) $(id).value = '';
   err.textContent = '';   // altrimenti resta scritto l'errore del tentativo prima
 
   // Chi si è appena registrato riceve il codice di recupero, una volta sola.
@@ -739,6 +749,39 @@ async function riempiProfilo() {
     .join('');
 
   riempiStorico(st.record);
+  riempiDati();
+}
+
+async function riempiDati() {
+  const esito = $('dati-esito');
+  esito.textContent = '';
+  const { ok, dati } = await net.miContatti();
+  if (!ok || !dati) {
+    // succede se lo schema aggiornato non è ancora stato eseguito
+    esito.textContent = '';
+    return;
+  }
+  $('d-email').value = dati.email || '';
+  $('d-nome').value = dati.nome || '';
+  $('d-cognome').value = dati.cognome || '';
+  $('d-telefono').value = dati.telefono || '';
+}
+
+async function salvaDati(e) {
+  e.preventDefault();
+  const b = $('dati-salva');
+  const esito = $('dati-esito');
+  b.disabled = true;
+  b.textContent = 'Salvo...';
+  const out = await net.salvaContatti({
+    email: $('d-email').value,
+    nome: $('d-nome').value,
+    cognome: $('d-cognome').value,
+    telefono: $('d-telefono').value,
+  });
+  b.disabled = false;
+  b.textContent = 'Salva i dati';
+  esito.textContent = out.ok ? 'Dati salvati.' : out.error;
 }
 
 // Ultime partite: un grafico a barre e l'elenco. Se la tabella non c'è ancora

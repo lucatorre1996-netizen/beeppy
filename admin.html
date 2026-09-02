@@ -7,75 +7,94 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#2b3440">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
 <style>
-  /* Pagina strumento, non pagina di gioco: sobria, densa, leggibile.
-     Gli stili stanno qui dentro perché questa pagina non deve dipendere dal
-     foglio di stile del gioco: sono due cose separate e devono restare tali. */
+  /* Stessa famiglia del gioco: cielo, miele, inchiostro caldo. Gli stili stanno
+     qui e non nel foglio del gioco perché le due cose devono poter cambiare
+     separatamente — ma devono somigliarsi, non sembrare due prodotti diversi. */
   :root {
-    --sfondo: #1b2028; --carta: #262c36; --riga: #2f3743;
-    --testo: #eef1f5; --soffuso: #9aa5b4; --oro: #ffc542; --rosso: #ff6b5e;
+    --cielo1: #9adcef; --cielo2: #3fb0dd;
+    --carta: #fffdf6; --ink: #2b2118; --soffuso: #6b6055; --riga: rgba(43,33,24,0.08);
+    --oro: #ffc542; --oro-scuro: #e8a01a; --rosso: #a3231b;
+    --ombra: 0 12px 34px rgba(23, 16, 8, 0.18);
   }
   * { box-sizing: border-box; }
   body {
-    margin: 0; padding: 24px 16px 60px; min-height: 100vh;
-    background: var(--sfondo); color: var(--testo);
-    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    margin: 0; padding: 26px 16px 70px; min-height: 100vh;
+    background: linear-gradient(180deg, var(--cielo1), #e8f6fb 420px);
+    color: var(--ink);
+    font-family: 'Baloo 2', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
     font-size: 15px; line-height: 1.5;
   }
   main { max-width: 760px; margin: 0 auto; }
-  h1 { margin: 0 0 4px; font-size: 22px; }
-  h2 { margin: 26px 0 10px; font-size: 15px; text-transform: uppercase;
-       letter-spacing: 0.7px; color: var(--soffuso); }
   .nascosto { display: none !important; }
 
-  .carta { padding: 20px; border-radius: 14px; background: var(--carta); }
-  label { display: block; margin: 12px 0 4px; font-size: 13px; color: var(--soffuso); }
-  input[type=email], input[type=password], input[type=text] {
-    width: 100%; min-height: 44px; padding: 0 12px;
-    border: 1px solid var(--riga); border-radius: 10px;
-    background: #1f242c; color: var(--testo); font: inherit;
+  .marchio { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+  .marchio img { width: 54px; height: 54px; filter: drop-shadow(0 6px 12px rgba(0,0,0,0.22)); }
+  h1 { margin: 0; font-size: 25px; font-weight: 800; }
+  .sotto { margin: 0; font-size: 14px; font-weight: 600; color: var(--soffuso); }
+  h2 { margin: 26px 0 10px; font-size: 13px; font-weight: 800; text-transform: uppercase;
+       letter-spacing: 0.8px; color: var(--soffuso); }
+
+  .carta { padding: 20px; border-radius: 20px; background: var(--carta); box-shadow: var(--ombra); }
+  label { display: block; margin: 12px 0 4px; font-size: 13px; font-weight: 700; color: var(--soffuso); }
+  input[type=email], input[type=password], input[type=text], input[type=number] {
+    width: 100%; min-height: 46px; padding: 0 13px;
+    border: 2px solid var(--riga); border-radius: 13px;
+    background: #fff; color: var(--ink); font: inherit; font-size: 16px;
   }
   input:focus { outline: none; border-color: var(--oro); }
   button {
-    min-height: 42px; padding: 0 16px; border: 0; border-radius: 10px;
-    background: var(--oro); color: #1b2028; font: inherit; font-weight: 700;
-    cursor: pointer;
+    min-height: 46px; padding: 0 18px; border: 0; border-radius: 14px;
+    background: linear-gradient(180deg, #ffd569, var(--oro)); color: var(--ink);
+    box-shadow: 0 4px 0 var(--oro-scuro);
+    font: inherit; font-size: 16px; font-weight: 700; cursor: pointer;
   }
-  button:disabled { opacity: 0.6; cursor: default; }
-  button.piatto { background: var(--riga); color: var(--testo); }
-  .barra { display: flex; gap: 8px; align-items: center; margin-top: 16px; }
+  button:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--oro-scuro); }
+  button:disabled { opacity: 0.55; cursor: default; }
+  button.piatto { background: rgba(43,33,24,0.07); box-shadow: none; color: var(--ink); }
+  .barra { display: flex; gap: 8px; align-items: center; margin-top: 14px; }
   .barra .cresci { flex: 1; }
 
-  .testa { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
-  .chi-sei { font-size: 13px; color: var(--soffuso); }
+  .testa { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .chi-sei { font-size: 13px; font-weight: 600; color: var(--soffuso); }
 
-  .numeri { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
-  .numero { padding: 12px; border-radius: 10px; background: var(--riga); text-align: center; }
-  .numero b { display: block; font-size: 22px; }
-  .numero span { font-size: 11px; color: var(--soffuso); text-transform: uppercase; letter-spacing: 0.4px; }
+  .numeri { display: grid; grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); gap: 8px; }
+  .numero { padding: 13px 8px; border-radius: 16px; background: var(--carta); box-shadow: var(--ombra); text-align: center; }
+  .numero b { display: block; font-size: 24px; font-weight: 800; }
+  .numero span { font-size: 11px; font-weight: 700; color: var(--soffuso); text-transform: uppercase; letter-spacing: 0.4px; }
 
   ul { list-style: none; margin: 0; padding: 0; }
-  li { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; }
-  li:nth-child(odd) { background: rgba(255,255,255,0.035); }
+  .lista { border-radius: 20px; background: var(--carta); box-shadow: var(--ombra); padding: 8px; }
+  li { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 13px; }
+  li:nth-child(odd) { background: rgba(43,33,24,0.04); }
   li.vuoto { display: block; color: var(--soffuso); text-align: center; padding: 22px; }
   .chi { flex: 1; min-width: 0; }
-  .chi b { font-size: 15px; }
-  .meta { display: block; font-size: 12px; color: var(--soffuso); }
-  .punti { font-size: 17px; font-weight: 700; min-width: 40px; text-align: right; }
-  .tag { font-size: 10px; font-weight: 700; color: var(--oro); border: 1px solid var(--oro);
-         border-radius: 5px; padding: 1px 5px; vertical-align: 2px; }
-  .azione { min-height: 32px; padding: 0 10px; font-size: 12px; background: var(--riga); color: var(--testo); }
-  .azione.rossa { background: rgba(255,107,94,0.16); color: var(--rosso); }
+  .chi b { font-size: 16px; font-weight: 800; }
+  .meta { display: block; font-size: 12px; font-weight: 600; color: var(--soffuso); }
+  .punti { font-size: 18px; font-weight: 800; min-width: 38px; text-align: right; }
+  .tag { font-size: 10px; font-weight: 800; color: var(--oro-scuro);
+         border: 1.5px solid var(--oro); border-radius: 6px; padding: 1px 5px; vertical-align: 2px; }
+  .azione { min-height: 32px; padding: 0 11px; font-size: 12px; border-radius: 9px;
+            background: rgba(43,33,24,0.08); box-shadow: none; color: var(--ink); }
+  .azione.rossa { background: #ffe3e0; color: var(--rosso); }
 
   .riga-check { display: flex; align-items: center; gap: 9px; margin-top: 14px; }
-  .riga-check input { width: 18px; height: 18px; accent-color: var(--oro); }
-  .esito { margin: 12px 0 0; padding: 10px 12px; border-radius: 9px;
-           background: rgba(255,197,66,0.12); font-size: 14px; }
-  .esito.cattivo { background: rgba(255,107,94,0.14); color: var(--rosso); }
-  .errore { margin: 12px 0 0; padding: 10px 12px; border-radius: 9px;
-            background: rgba(255,107,94,0.14); color: var(--rosso); font-size: 14px; }
-  .avviso { margin-top: 22px; font-size: 12px; color: var(--soffuso); line-height: 1.6; }
-  a { color: var(--oro); }
+  .riga-check input { width: 20px; height: 20px; accent-color: var(--oro-scuro); }
+  .riga-check label { margin: 0; color: var(--ink); font-size: 15px; }
+  .esito { margin: 12px 0 0; padding: 11px 13px; border-radius: 13px;
+           background: rgba(255,197,66,0.22); font-size: 14px; font-weight: 600; }
+  .esito.cattivo { background: #ffe3e0; color: var(--rosso); }
+  .errore { margin: 12px 0 0; padding: 11px 13px; border-radius: 13px;
+            background: #ffe3e0; color: var(--rosso); font-size: 14px; font-weight: 700; }
+  .avviso { margin-top: 18px; font-size: 13px; font-weight: 600; color: var(--soffuso); line-height: 1.55; }
+  code { padding: 2px 6px; border-radius: 6px; background: rgba(43,33,24,0.08);
+         font-family: ui-monospace, Menlo, monospace; font-size: 0.92em; }
+  a { color: var(--oro-scuro); font-weight: 700; }
+  .passi { margin: 10px 0 0; padding-left: 20px; }
+  .passi li { display: list-item; padding: 0 0 8px; background: none; }
 </style>
 </head>
 <body>
@@ -83,7 +102,13 @@
 
   <!-- accesso -->
   <section id="schermata-accesso">
-    <h1>Beeppy — Amministrazione</h1>
+    <div class="marchio">
+      <img src="assets/bee.svg" alt="" width="54" height="54">
+      <div>
+        <h1>Beeppy</h1>
+        <p class="sotto">Amministrazione</p>
+      </div>
+    </div>
     <p class="chi-sei">Accesso riservato. Le credenziali sono separate da quelle di gioco.</p>
     <div class="carta" style="margin-top:18px">
       <form id="accesso-form" autocomplete="on">
@@ -91,6 +116,11 @@
         <input id="email" type="email" autocomplete="username" required>
         <label for="password">Password</label>
         <input id="password" type="password" autocomplete="current-password" required>
+        <!-- campo trappola: invisibile a chi guarda, irresistibile per i bot -->
+        <div style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden" aria-hidden="true">
+          <label for="azienda">Azienda</label>
+          <input id="azienda" type="text" tabindex="-1" autocomplete="off">
+        </div>
         <p id="accesso-errore" class="errore nascosto"></p>
         <div class="barra"><button id="accesso-invia" class="cresci" type="submit">Entra</button></div>
       </form>
@@ -106,9 +136,12 @@
   <!-- pannello -->
   <section id="schermata-pannello" class="nascosto">
     <div class="testa">
-      <div>
-        <h1>Amministrazione</h1>
-        <span id="chi-sei" class="chi-sei"></span>
+      <div class="marchio" style="margin:0">
+        <img src="assets/bee.svg" alt="" width="46" height="46">
+        <div>
+          <h1>Beeppy</h1>
+          <span id="chi-sei" class="chi-sei"></span>
+        </div>
       </div>
       <div class="barra" style="margin:0">
         <button id="ricarica" class="piatto" type="button">Ricarica</button>
@@ -143,8 +176,48 @@
       <p id="esito" class="esito nascosto"></p>
     </div>
 
+    <h2>Invio email (SMTP)</h2>
+    <div class="carta">
+      <p style="margin:0 0 4px">
+        <b>La password SMTP non si inserisce qui, ed è voluto.</b> Questa pagina è
+        un file statico: tutto quello che contiene lo può leggere chiunque apra gli
+        strumenti da sviluppatore del browser. Una password del genere lascia
+        mandare email dal tuo indirizzo a chi la trova.
+      </p>
+      <p style="margin:8px 0 0">
+        Va messa dove sta al sicuro, cioè nel pannello Supabase, che la conserva
+        cifrata e non la restituisce mai a nessuna pagina web:
+        <a href="https://supabase.com/dashboard/project/capyfbcjxkjkyeigciqb/settings/auth"
+           target="_blank" rel="noopener">Project Settings → Authentication → SMTP</a>.
+      </p>
+
+      <ol class="passi">
+        <li>In Google: <b>Account → Sicurezza → Verifica in due passaggi</b>, poi
+            <b>Password per le app</b>. Genera una password di 16 caratteri: quella
+            normale di Gmail non funziona.</li>
+        <li>Su Supabase, nella pagina qui sopra, attiva <b>Enable Custom SMTP</b> e
+            inserisci:
+            <br>Host <code>smtp.gmail.com</code> · Port <code>465</code>
+            <br>Username <code>lucatorre1996@gmail.com</code>
+            <br>Password: quella di 16 caratteri appena generata
+            <br>Sender email <code>lucatorre1996@gmail.com</code> · Sender name <code>Beeppy</code></li>
+        <li>Torna qui e usa il pulsante di prova: se l'email arriva, è configurato.</li>
+      </ol>
+
+      <div class="barra">
+        <button id="prova-email" class="cresci" type="button">Mandami un'email di prova</button>
+      </div>
+      <p id="esito-email" class="esito nascosto"></p>
+      <p class="avviso" style="margin-top:12px">
+        Gmail consente circa 500 invii al giorno e ogni tanto blocca gli invii
+        automatici. Se un giorno Beeppy avrà molti iscritti, conviene passare a un
+        servizio fatto per questo (Brevo e Resend hanno piani gratuiti generosi):
+        si cambia solo l'SMTP nella stessa pagina, senza toccare il gioco.
+      </p>
+    </div>
+
     <h2>Giocatori</h2>
-    <ul id="lista"></ul>
+    <ul id="lista" class="lista"></ul>
     <p class="avviso">
       <b>Azzera</b> rimette a zero il record e cancella lo storico partite, ma lascia
       l'account: è la misura giusta per un punteggio sospetto. <b>Elimina</b> cancella
@@ -154,6 +227,6 @@
   </section>
 
 </main>
-<script type="module" src="js/admin.js?v=6"></script>
+<script type="module" src="js/admin.js?v=7"></script>
 </body>
 </html>

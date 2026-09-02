@@ -50,10 +50,67 @@ function esito(testo, cattivo) {
 }
 
 // ------------------------------------------------------------------ accesso
+//
+// Tre freni contro i tentativi automatici. Nessuno è invalicabile da solo — la
+// difesa che conta davvero sono i limiti per indirizzo IP di Supabase Auth, che
+// stanno sul server e non si aggirano da qui — ma insieme fermano la fascia di
+// attacchi che si fa con uno script buttato lì.
+const APERTA_ALLE = Date.now();
+const TEMPO_MINIMO = 1500;   // un umano non compila due campi in un secondo e mezzo
+const CHIAVE_TENTATIVI = 'beeppy-admin-tentativi';
+
+function tentativi() {
+  try {
+    const v = JSON.parse(localStorage.getItem(CHIAVE_TENTATIVI) || '[]');
+    const ora = Date.now();
+    return v.filter((t) => ora - t < 15 * 60 * 1000); // finestra di 15 minuti
+  } catch (err) {
+    return [];
+  }
+}
+
+function segnaTentativo() {
+  const v = tentativi();
+  v.push(Date.now());
+  try { localStorage.setItem(CHIAVE_TENTATIVI, JSON.stringify(v)); } catch (err) { /* niente */ }
+}
+
+function azzeraTentativi() {
+  try { localStorage.removeItem(CHIAVE_TENTATIVI); } catch (err) { /* niente */ }
+}
+
+// Attesa che cresce con i tentativi falliti: 0, 0, 0, 5s, 15s, 45s...
+function attesaRichiesta() {
+  const n = tentativi().length;
+  if (n < 3) return 0;
+  return Math.min(300, 5 * Math.pow(3, n - 3)) * 1000;
+}
 
 async function entra(e) {
   e.preventDefault();
   errore('');
+
+  // 1) campo trappola compilato: è un bot, si ferma qui senza dire perché
+  if ($('azienda').value) {
+    errore('Accesso non valido.');
+    return;
+  }
+  // 2) modulo compilato troppo in fretta
+  if (Date.now() - APERTA_ALLE < TEMPO_MINIMO) {
+    errore('Un attimo troppo veloce: riprova fra un secondo.');
+    return;
+  }
+  // 3) attesa progressiva dopo i tentativi falliti
+  const attesa = attesaRichiesta();
+  if (attesa > 0) {
+    const ultimo = tentativi().slice(-1)[0] || 0;
+    const restano = Math.ceil((ultimo + attesa - Date.now()) / 1000);
+    if (restano > 0) {
+      errore(`Troppi tentativi falliti. Riprova fra ${restano} secondi.`);
+      return;
+    }
+  }
+
   const btn = $('accesso-invia');
   btn.disabled = true;
   btn.textContent = 'Attendi...';
@@ -64,10 +121,15 @@ async function entra(e) {
       password: $('password').value,
     });
     if (error) throw error;
+    azzeraTentativi();
     await dopoAccesso();
   } catch (err) {
+    segnaTentativo();
     const m = String((err && err.message) || err).toLowerCase();
-    errore(m.includes('invalid login') ? 'Email o password non corrette.' : (err.message || String(err)));
+    const n = tentativi().length;
+    const coda = n >= 3 ? ` (${n} tentativi falliti: la prossima attesa sarà più lunga)` : '';
+    errore((m.includes('invalid login') ? 'Email o password non corrette.'
+                                        : (err.message || String(err))) + coda);
   } finally {
     btn.disabled = false;
     btn.textContent = 'Entra';
@@ -139,6 +201,7 @@ async function aggiorna() {
         <span class="meta">${r.games_played} partite · iscritto il ${data(r.iscritto)}${r.ultima ? ' · ultima ' + data(r.ultima) : ''}</span>
       </div>
       <span class="punti">${r.best_score}</span>
+      <button class="azione" data-azione="contatti">contatti</button>
       <button class="azione" data-azione="azzera">azzera</button>
       <button class="azione rossa" data-azione="elimina">elimina</button>
     </li>`).join('') : '<li class="vuoto">Nessun giocatore.</li>';
@@ -165,6 +228,17 @@ async function agisci(b) {
   const nome = li.querySelector('b').textContent;
   const azione = b.dataset.azione;
 
+  // i contatti si mostrano e basta: nessuna conferma, nessuna modifica
+  if (azione === 'contatti') {
+    const c = await client();
+    const { data, error } = await c.rpc('admin_contatti', { p_id: id });
+    const r = Array.isArray(data) ? data[0] : data;
+    esito(error ? error.message
+      : r ? `${nome}: ${[r.nome, r.cognome].filter(Boolean).join(' ') || '(nessun nome)'} · ${r.email}${r.telefono ? ' · ' + r.telefono : ''}`
+          : `${nome}: nessun recapito registrato.`, Boolean(error));
+    return;
+  }
+
   if (b.dataset.armato !== 'si') {
     b.dataset.armato = 'si';
     b.textContent = 'confermi?';
@@ -185,6 +259,42 @@ async function agisci(b) {
   if (error) esito(error.message, true);
   else esito(azione === 'azzera' ? `Punteggio di ${nome} azzerato.` : `${nome} eliminato.`);
   await aggiorna();
+}
+
+// Prova concreta dell'SMTP: chiediamo a Supabase di mandare all'amministratore
+// l'email di reimpostazione password. Se l'SMTP è configurato arriva; se non lo
+// è, non arriva niente. La chiamata risponde "ok" in entrambi i casi — è voluto,
+// serve a non rivelare quali indirizzi esistano — quindi la verifica vera è
+// guardare la casella.
+async function provaEmail() {
+  const b = $('prova-email');
+  const e = $('esito-email');
+  b.disabled = true;
+  b.textContent = 'Invio…';
+  const c = await client();
+  const { data: u } = await c.auth.getUser();
+  const indirizzo = u && u.user ? u.user.email : null;
+  if (!indirizzo) {
+    b.disabled = false;
+    b.textContent = "Mandami un'email di prova";
+    e.className = 'esito cattivo';
+    e.textContent = 'Non riesco a leggere il tuo indirizzo.';
+    return;
+  }
+  const { error } = await c.auth.resetPasswordForEmail(indirizzo, {
+    redirectTo: location.origin + '/admin.html',
+  });
+  b.disabled = false;
+  b.textContent = "Mandami un'email di prova";
+  if (error) {
+    e.className = 'esito cattivo';
+    e.textContent = error.message;
+    return;
+  }
+  e.className = 'esito';
+  e.textContent = `Richiesta inviata a ${indirizzo}. Controlla la casella, ` +
+    'anche nello spam. Se entro un minuto non arriva niente, l\'SMTP non è ' +
+    'ancora configurato su Supabase.';
 }
 
 async function salvaConfig() {
@@ -217,6 +327,7 @@ if (!ONLINE) {
   $('esci').addEventListener('click', esci);
   $('salva').addEventListener('click', salvaConfig);
   $('ricarica').addEventListener('click', aggiorna);
+  $('prova-email').addEventListener('click', provaEmail);
 
   // se c'è già una sessione admin salvata, si entra diretti
   client().then(async (c) => {

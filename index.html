@@ -182,6 +182,28 @@
           <input id="f-pass" name="password" type="password" inputmode="numeric"
                  pattern="[0-9]*" autocomplete="current-password"
                  minlength="4" maxlength="8" placeholder="4 cifre o più" required>
+          <div id="campi-registrazione" class="hidden">
+            <label for="f-email">Email <span class="obbligatorio">obbligatoria</span></label>
+            <input id="f-email" name="email" type="email" inputmode="email"
+                   autocapitalize="none" autocomplete="email" maxlength="120"
+                   placeholder="la tua email">
+            <div class="due-campi">
+              <div>
+                <label for="f-nome">Nome</label>
+                <input id="f-nome" type="text" autocomplete="given-name" maxlength="60"
+                       placeholder="facoltativo">
+              </div>
+              <div>
+                <label for="f-cognome">Cognome</label>
+                <input id="f-cognome" type="text" autocomplete="family-name" maxlength="60"
+                       placeholder="facoltativo">
+              </div>
+            </div>
+            <label for="f-telefono">Telefono</label>
+            <input id="f-telefono" type="tel" inputmode="tel" autocomplete="tel"
+                   maxlength="25" placeholder="facoltativo">
+          </div>
+
           <!-- campo trappola per i bot: invisibile e ignorato dagli screen reader.
                Se arriva compilato, la registrazione viene rifiutata. -->
           <div class="honeypot" aria-hidden="true">
@@ -260,6 +282,30 @@
 
         <div id="profilo-traguardi" class="traguardi"></div>
 
+        <div class="profilo-dati">
+          <span class="stat-k">I tuoi dati</span>
+          <form id="dati-form">
+            <label for="d-email">Email <span class="obbligatorio">obbligatoria</span></label>
+            <input id="d-email" type="email" inputmode="email" autocapitalize="none"
+                   maxlength="120" required>
+            <div class="due-campi">
+              <div>
+                <label for="d-nome">Nome</label>
+                <input id="d-nome" type="text" maxlength="60" placeholder="facoltativo">
+              </div>
+              <div>
+                <label for="d-cognome">Cognome</label>
+                <input id="d-cognome" type="text" maxlength="60" placeholder="facoltativo">
+              </div>
+            </div>
+            <label for="d-telefono">Telefono</label>
+            <input id="d-telefono" type="tel" inputmode="tel" maxlength="25"
+                   placeholder="facoltativo">
+            <p id="dati-esito" class="note"></p>
+            <button id="dati-salva" class="btn" type="submit">Salva i dati</button>
+          </form>
+        </div>
+
         <div id="profilo-storico" class="storico hidden">
           <span class="stat-k">Ultime partite</span>
           <div id="storico-grafico" class="storico-grafico"></div>
@@ -314,7 +360,7 @@
 // JavaScript vecchio.
 (function () {
   var avviato = false;
-  var V = '6';  // stessa versione della import map qui sopra
+  var V = '7';  // stessa versione della import map qui sopra
   var codice = ['index.html', 'styles.css'].concat(
     ['main','game','sim','render','palette','constants','audio','ui','net','rng','config','install','biometric']
       .map(function (m) { return 'js/' + m + '.js?v=' + V; }));
@@ -373,22 +419,22 @@
 <script type="importmap">
 {
   "imports": {
-      "./js/main.js": "./js/main.js?v=6",
-      "./js/game.js": "./js/game.js?v=6",
-      "./js/sim.js": "./js/sim.js?v=6",
-      "./js/render.js": "./js/render.js?v=6",
-      "./js/palette.js": "./js/palette.js?v=6",
-      "./js/constants.js": "./js/constants.js?v=6",
-      "./js/audio.js": "./js/audio.js?v=6",
-      "./js/ui.js": "./js/ui.js?v=6",
-      "./js/net.js": "./js/net.js?v=6",
-      "./js/rng.js": "./js/rng.js?v=6",
-      "./js/config.js": "./js/config.js?v=6",
-      "./js/install.js": "./js/install.js?v=6",
-      "./js/biometric.js": "./js/biometric.js?v=6"
+      "./js/main.js": "./js/main.js?v=7",
+      "./js/game.js": "./js/game.js?v=7",
+      "./js/sim.js": "./js/sim.js?v=7",
+      "./js/render.js": "./js/render.js?v=7",
+      "./js/palette.js": "./js/palette.js?v=7",
+      "./js/constants.js": "./js/constants.js?v=7",
+      "./js/audio.js": "./js/audio.js?v=7",
+      "./js/ui.js": "./js/ui.js?v=7",
+      "./js/net.js": "./js/net.js?v=7",
+      "./js/rng.js": "./js/rng.js?v=7",
+      "./js/config.js": "./js/config.js?v=7",
+      "./js/install.js": "./js/install.js?v=7",
+      "./js/biometric.js": "./js/biometric.js?v=7"
   }
 }
 </script>
-<script type="module" src="js/main.js?v=6"></script>
+<script type="module" src="js/main.js?v=7"></script>
 </body>
 </html>

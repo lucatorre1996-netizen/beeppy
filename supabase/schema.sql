@@ -88,6 +88,36 @@ create policy "configurazione leggibile da tutti"
   on public.app_config for select using (true);
 -- nessuna policy di scrittura: si passa da admin_set_config()
 
+-- ---------------------------------------------------- dati di contatto
+--  Tabella separata da profiles, e non è pignoleria: profiles è leggibile da
+--  ogni giocatore registrato (serve per la classifica), quindi mettere qui
+--  dentro email e telefono significherebbe che chiunque si iscrive può leggere
+--  i recapiti di tutti. Qui invece ognuno vede solo i propri.
+create table if not exists public.contatti (
+  user_id   uuid primary key references auth.users on delete cascade,
+  nome      text check (nome is null or char_length(nome) <= 60),
+  cognome   text check (cognome is null or char_length(cognome) <= 60),
+  email     text not null check (email ~* '^[^@[:space:]]+@[^@[:space:]]+\.[a-z]{2,}$'),
+  telefono  text check (telefono is null or telefono ~ '^[0-9 +().-]{6,25}$'),
+  creato    timestamptz not null default now(),
+  aggiornato timestamptz not null default now()
+);
+
+create index if not exists contatti_email_idx on public.contatti (lower(email));
+
+alter table public.contatti enable row level security;
+
+drop policy if exists "ognuno vede i propri contatti" on public.contatti;
+create policy "ognuno vede i propri contatti"
+  on public.contatti for select using (auth.uid() = user_id);
+
+drop policy if exists "ognuno aggiorna i propri contatti" on public.contatti;
+create policy "ognuno aggiorna i propri contatti"
+  on public.contatti for update using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+-- nessuna policy di insert: la riga la crea il trigger alla registrazione
+
+
 insert into public.app_config (chiave, valore) values
   ('annuncio', ''),
   ('registrazioni_aperte', 'si'),
@@ -141,6 +171,7 @@ declare
   v_nick text := coalesce(new.raw_user_meta_data->>'nickname',
                           'ape_' || substr(new.id::text, 1, 6));
   v_aperte text;
+  v_email  text;
 begin
   -- L'interruttore "registrazioni aperte" dell'area admin va fatto rispettare
   -- qui, non nell'interfaccia: un client manomesso salterebbe qualsiasi
@@ -155,6 +186,23 @@ begin
   end if;
   insert into public.profiles (id, nickname) values (new.id, v_nick);
   insert into public.scores (user_id) values (new.id);
+
+  -- I dati di contatto arrivano dai metadati della registrazione: così entrano
+  -- nella stessa transazione dell'account, e non può esistere un iscritto senza
+  -- email. L'email è obbligatoria, il resto no.
+  v_email := nullif(trim(new.raw_user_meta_data->>'email_contatto'), '');
+  if v_email is null then
+    raise exception 'email obbligatoria';
+  end if;
+  insert into public.contatti (user_id, nome, cognome, email, telefono)
+  values (
+    new.id,
+    nullif(trim(new.raw_user_meta_data->>'nome'), ''),
+    nullif(trim(new.raw_user_meta_data->>'cognome'), ''),
+    v_email,
+    nullif(trim(new.raw_user_meta_data->>'telefono'), '')
+  );
+
   return new;
 end;
 $$;
@@ -485,6 +533,25 @@ $$;
 
 revoke execute on function public.admin_players() from anon, public;
 grant  execute on function public.admin_players() to authenticated;
+
+-- --------------------------------------- contatti visibili all'amministratore
+create or replace function public.admin_contatti(p_id uuid)
+returns table (nome text, cognome text, email text, telefono text)
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'non autorizzato';
+  end if;
+  return query
+    select c.nome, c.cognome, c.email, c.telefono
+      from public.contatti c where c.user_id = p_id;
+end;
+$$;
+
+revoke execute on function public.admin_contatti(uuid) from anon, public;
+grant  execute on function public.admin_contatti(uuid) to authenticated;
 
 -- ------------------------------- cancellare un giocatore (spam, abusi)
 create or replace function public.admin_delete_user(p_id uuid)

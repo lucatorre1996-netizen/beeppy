@@ -45,6 +45,23 @@ export function pinToPassword(pin) {
   return `beeppy.pin.v1:${pin}`;
 }
 
+export const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[a-zA-Z]{2,}$/;
+export const TEL_RE = /^[0-9 +().-]{6,25}$/;
+
+// L'email è l'unico dato obbligatorio: serve per poter recuperare l'accesso e
+// per poterti contattare. Nome, cognome e telefono restano facoltativi.
+export function contattiProblem(c) {
+  const email = (c.email || '').trim();
+  if (!email) return 'L\'email è obbligatoria.';
+  if (!EMAIL_RE.test(email)) return 'Questa email non sembra valida.';
+  if (email.length > 120) return 'Email troppo lunga.';
+  const tel = (c.telefono || '').trim();
+  if (tel && !TEL_RE.test(tel)) return 'Il numero di telefono non sembra valido.';
+  if ((c.nome || '').length > 60 || (c.cognome || '').length > 60)
+    return 'Nome o cognome troppo lunghi.';
+  return null;
+}
+
 export function pinProblem(pin) {
   const p = (pin || '').trim();
   if (!/^[0-9]*$/.test(p)) return 'Il PIN può contenere solo numeri.';
@@ -156,6 +173,10 @@ function client() {
 function human(err) {
   const m = (err && (err.message || String(err))) || 'errore sconosciuto';
   const l = m.toLowerCase();
+  if (l.includes('email obbligatoria'))
+    return 'L\'email è obbligatoria.';
+  if (l.includes('contatti_email_check') || l.includes('email ~*'))
+    return 'Questa email non sembra valida.';
   if (l.includes('registrazioni chiuse'))
     return 'Le registrazioni sono momentaneamente chiuse.';
   if (l.includes('non ammesso') || l.includes('nickname_ok'))
@@ -251,7 +272,7 @@ export async function nicknameStatus(nick) {
 }
 
 // guard: { honeypot, elapsedMs } - le difese anti-bot raccolte dal form.
-export async function signUp(nick, pin, guard = {}) {
+export async function signUp(nick, pin, contatti = {}, guard = {}) {
   if (!ONLINE) return { ok: false, error: 'Classifica online non configurata.' };
 
   // Campo trappola: invisibile a chi guarda, irresistibile per i bot che
@@ -268,6 +289,8 @@ export async function signUp(nick, pin, guard = {}) {
   if (problem) return { ok: false, error: problem };
   const pinBad = pinProblem(pin);
   if (pinBad) return { ok: false, error: pinBad };
+  const contattiBad = contattiProblem(contatti);
+  if (contattiBad) return { ok: false, error: contattiBad };
   try {
     const stato = await nicknameStatus(nick);
     if (stato === 'occupato') return { ok: false, error: 'Questo nickname è già preso.' };
@@ -276,7 +299,17 @@ export async function signUp(nick, pin, guard = {}) {
     const { data, error } = await c.auth.signUp({
       email: emailFor(nick),
       password: pinToPassword(pin),
-      options: { data: { nickname: nick } },
+      options: {
+        data: {
+          nickname: nick,
+          // il trigger li legge da qui e li scrive nella tabella contatti,
+          // nella stessa transazione dell'account
+          email_contatto: (contatti.email || '').trim(),
+          nome: (contatti.nome || '').trim(),
+          cognome: (contatti.cognome || '').trim(),
+          telefono: (contatti.telefono || '').trim(),
+        },
+      },
     });
     if (error) throw error;
     if (!data.session) {
@@ -356,6 +389,48 @@ export async function submitScore(res) {
     setLocalBest(res.score);
     state.best = Math.max(state.best, res.score);
     return { ok: false, error: human(e), best: state.best, isRecord: eraRecordLocale };
+  }
+}
+
+// I propri dati di contatto. Li vede solo il proprietario: la tabella ha una
+// policy che lo impone, quindi anche chiedendoli per un altro non arriverebbe
+// niente.
+export async function miContatti() {
+  if (!ONLINE || !state.user) return { ok: false, dati: null };
+  try {
+    const c = await client();
+    const { data, error } = await c
+      .from('contatti')
+      .select('nome, cognome, email, telefono')
+      .eq('user_id', state.user.id)
+      .maybeSingle();
+    if (error) throw error;
+    return { ok: true, dati: data };
+  } catch (e) {
+    return { ok: false, dati: null, error: human(e) };
+  }
+}
+
+export async function salvaContatti(dati) {
+  if (!ONLINE || !state.user) return { ok: false, error: 'Non hai fatto l\'accesso.' };
+  const problema = contattiProblem(dati);
+  if (problema) return { ok: false, error: problema };
+  try {
+    const c = await client();
+    const { error } = await c
+      .from('contatti')
+      .update({
+        nome: (dati.nome || '').trim() || null,
+        cognome: (dati.cognome || '').trim() || null,
+        email: dati.email.trim(),
+        telefono: (dati.telefono || '').trim() || null,
+        aggiornato: new Date().toISOString(),
+      })
+      .eq('user_id', state.user.id);
+    if (error) throw error;
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: human(e) };
   }
 }
 

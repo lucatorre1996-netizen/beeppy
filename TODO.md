@@ -21,11 +21,23 @@ Ordinate per urgenza: la P0 blocca l'invito agli amici, il resto no.
       trovi commentata in `supabase/schema.sql`. Si entra da `/admin.html`. È
       volutamente separato dall'account di gioco: un PIN di quattro cifre non è
       una credenziale adatta a cancellare utenti.
-- [ ] **Configurare l'SMTP** in Supabase (Project Settings → Authentication → SMTP),
-      non nell'app: una password SMTP nel frontend è leggibile da chiunque. Con
-      Gmail serve una "password per le app" (Google → Sicurezza → Verifica in due
-      passaggi). **Serve solo se vuoi il recupero via email**: quello con codice
-      funziona già senza.
+- [ ] **Configurare l'SMTP** in Supabase (Project Settings → Authentication → SMTP).
+      La pagina admin ora contiene i valori esatti da inserire e un pulsante che
+      manda un'email di prova per verificare se funziona. La password va messa lì
+      e non nell'app: nel frontend sarebbe leggibile da chiunque.
+- [ ] **Foto profilo** — richiede Supabase Storage: creare un bucket `avatar`
+      pubblico in lettura con policy di scrittura sul proprio file. Il
+      ridimensionamento si fa nel browser prima di caricare, per non spedire foto
+      da 5 MB. Da valutare la moderazione: un avatar lo vedono tutti in classifica.
+- [ ] **Accesso con Google** — richiede un progetto Google Cloud con credenziali
+      OAuth e la configurazione nel pannello Supabase (Authentication → Providers →
+      Google). Lato gioco serve un passaggio in più: chi entra con Google non ha un
+      nickname, e va chiesto prima di entrare in classifica. Nota per gli store:
+      Apple pretende "Accedi con Apple" da chi offre l'accesso con Google.
+- [ ] **Captcha su registrazione e accesso** — Supabase lo supporta (hCaptcha o
+      Turnstile) da Authentication → Settings. **Attenzione**: attivandolo lì, tutti
+      i form devono spedire il token, altrimenti nessuno riesce più a entrare. Non
+      accenderlo senza dirmelo: va fatto in un colpo solo su gioco e admin.
 - [ ] **Provare il recupero PIN per intero** dopo aver eseguito lo SQL: registrare
       un account di prova, salvare il codice, uscire, rimettere il PIN col codice.
       Di questo percorso ho potuto verificare solo interfaccia, generatore di codici
@@ -79,6 +91,16 @@ Ordinate per urgenza: la P0 blocca l'invito agli amici, il resto no.
       di un vicolo cieco. In caso di dubbio (configurazione illeggibile, rete
       assente) si lascia giocare: nessuno deve restare chiuso fuori per un
       problema che non lo riguarda.
+
+- [x] ~~Dati personali (nome, cognome, email, telefono)~~ — fatti, in registrazione
+      e nel profilo, con la sola email obbligatoria. Stanno in una tabella
+      `contatti` separata da `profiles`: quest'ultima è leggibile da ogni giocatore
+      registrato per via della classifica, quindi metterci dentro i recapiti
+      avrebbe significato che chiunque si iscrive legge email e telefono di tutti.
+- [x] ~~Pagina admin con la grafica del gioco~~ — fatta, con l'ape come marchio.
+- [x] ~~Difese anti-bot sull'accesso admin~~ — campo trappola, tempo minimo di
+      compilazione e attesa che cresce con i tentativi falliti (0, 0, 0, 5s, 15s,
+      45s…). La difesa vera restano i limiti per IP di Supabase Auth.
 
 ## P1 — prodotto
 

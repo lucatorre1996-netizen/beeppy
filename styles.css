@@ -603,3 +603,22 @@ code {
 .install-passi li:last-child { margin-bottom: 0; }
 .install-passi .btn { width: 100%; margin-top: 12px; }
 .install-passi svg { vertical-align: -3px; }
+
+/* ------------------------------------------------ dati personali */
+.due-campi { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.due-campi input { width: 100%; }
+.obbligatorio {
+  font-size: 11px; font-weight: 800; color: var(--honey-dark);
+  text-transform: uppercase; letter-spacing: 0.4px;
+}
+.profilo-dati { margin-top: 18px; }
+#dati-form { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
+#dati-form label { font-size: 13px; font-weight: 700; color: var(--ink-soft); margin-top: 6px; }
+#dati-form input {
+  min-height: 46px; padding: 0 12px;
+  border: 2px solid var(--panel-line); border-radius: 12px;
+  background: #fff; font: inherit; font-size: 16px; color: var(--ink);
+  -webkit-user-select: text; user-select: text;
+}
+#dati-form input:focus { outline: none; border-color: var(--honey); }
+#dati-form .btn { margin-top: 10px; }
