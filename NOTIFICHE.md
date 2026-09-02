@@ -80,8 +80,9 @@ vedere come appaiono prima di decidere.
 1. `npm run chiavi-push` — genera la coppia di chiavi. Va fatto **una volta sola**.
 2. La chiave **pubblica** in `js/config.js`, campo `VAPID_PUBLIC_KEY`.
 3. La chiave **privata** nei segreti del repository (Settings → Secrets and
-   variables → Actions), nome `VAPID_PRIVATE_KEY`. **Non deve finire in nessun
-   altro posto**: chi ce l'ha può mandare notifiche a nome di Beeppy.
+   variables → Actions), nome `VAPID_PRIVATE_KEY` — oppure `BEEPPY`, che il
+   lavoro accetta lo stesso. **Non deve finire in nessun altro posto**: chi ce
+   l'ha può mandare notifiche a nome di Beeppy.
 4. Stessa pagina, altri due segreti: `VAPID_PUBLIC_KEY` (la stessa del punto 2) e
    `SUPABASE_SERVICE_ROLE` (Project Settings → API → service_role).
 5. Eseguire `supabase/schema.sql`, che crea le tabelle delle iscrizioni.

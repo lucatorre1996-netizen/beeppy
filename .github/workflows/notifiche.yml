@@ -7,6 +7,7 @@
 # (Settings → Secrets and variables → Actions → New repository secret):
 #
 #   VAPID_PRIVATE_KEY       la chiave privata, da `npm run chiavi-push`
+#                           (va bene anche il nome BEEPPY: vedi sotto)
 #   VAPID_PUBLIC_KEY        la chiave pubblica, la stessa che sta in js/config.js
 #   SUPABASE_SERVICE_ROLE   Project Settings → API → service_role
 #                           (scavalca ogni permesso: non deve uscire da qui)
@@ -45,6 +46,27 @@ jobs:
         with:
           node-version: '20'
 
+      # Dice quali segreti trova e quali no, senza mai mostrarne il contenuto.
+      # Serve a scoprire subito un nome scritto male, invece di ritrovarsi con
+      # un lavoro che non manda niente e non spiega perché.
+      - name: Controlla i segreti
+        env:
+          PRIV: ${{ secrets.VAPID_PRIVATE_KEY || secrets.BEEPPY }}
+          PUB: ${{ secrets.VAPID_PUBLIC_KEY }}
+          SERV: ${{ secrets.SUPABASE_SERVICE_ROLE }}
+        run: |
+          stato() { if [ -n "$2" ]; then echo "  $1: presente (${#2} caratteri)"; else echo "  $1: MANCA"; fi; }
+          echo "Segreti configurati:"
+          stato "chiave privata (VAPID_PRIVATE_KEY o BEEPPY)" "$PRIV"
+          stato "chiave pubblica (VAPID_PUBLIC_KEY)" "$PUB"
+          stato "chiave di servizio (SUPABASE_SERVICE_ROLE)" "$SERV"
+          if [ -n "$PRIV" ] && [ "${#PRIV}" -ne 43 ]; then
+            echo "::warning::La chiave privata dovrebbe essere di 43 caratteri, ne ha ${#PRIV}."
+          fi
+          if [ -n "$PUB" ] && [ "${#PUB}" -ne 87 ]; then
+            echo "::warning::La chiave pubblica dovrebbe essere di 87 caratteri, ne ha ${#PUB}."
+          fi
+
       - name: Installa la libreria per l'invio
         run: npm install web-push@3 --no-save
 
@@ -53,7 +75,11 @@ jobs:
           SUPABASE_URL: https://capyfbcjxkjkyeigciqb.supabase.co
           SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
           VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
-          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          # Accettiamo anche il nome BEEPPY: è così che è stato salvato la prima
+          # volta, e far rigenerare una chiave privata per un nome sbagliato
+          # significa rischiare di perderla. Il codice si adatta a com'è il
+          # mondo, non il contrario.
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY || secrets.BEEPPY }}
           VAPID_SUBJECT: mailto:lucatorre1996@gmail.com
         run: |
           set -e
