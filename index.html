@@ -219,31 +219,6 @@
         </form>
       </div>
 
-      <!-- area amministratore: compare solo a chi lo è davvero, e i permessi
-           li controlla il database a ogni chiamata, non questo nascondere -->
-      <div id="auth-admin" class="hidden">
-        <div id="admin-numeri" class="profilo-griglia"></div>
-
-        <div class="admin-sezione">
-          <span class="stat-k">Annuncio nel menu</span>
-          <input id="admin-annuncio" type="text" maxlength="200"
-                 placeholder="Vuoto = nessun annuncio">
-          <label class="admin-riga">
-            <input id="admin-registrazioni" type="checkbox">
-            <span>Registrazioni aperte</span>
-          </label>
-          <button id="btn-admin-salva" class="btn" type="button">Salva configurazione</button>
-          <p id="admin-esito" class="note"></p>
-        </div>
-
-        <div class="admin-sezione">
-          <span class="stat-k">Giocatori</span>
-          <ul id="admin-lista" class="admin-lista"></ul>
-        </div>
-
-        <button id="btn-admin-chiudi" class="btn btn-ghost" type="button">Torna al profilo</button>
-      </div>
-
       <div id="auth-logged" class="hidden">
         <div class="profilo-testa">
           <canvas id="profilo-avatar" width="150" height="150" aria-hidden="true"></canvas>
@@ -275,7 +250,6 @@
 
         <button id="btn-bio-on" class="btn hidden" type="button">Attiva Face ID</button>
         <p id="bio-note" class="note hidden"></p>
-        <button id="btn-admin" class="btn hidden" type="button">Area amministratore</button>
         <button id="btn-signout" class="btn">Esci dall'account</button>
         <button id="btn-delete" class="btn btn-danger" type="button">Cancella l'account</button>
       </div>

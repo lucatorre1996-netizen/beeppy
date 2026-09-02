@@ -42,6 +42,9 @@ self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
   // le chiamate a Supabase e ai font non passano mai per la cache
   if (url.origin !== location.origin) return;
+  // la pagina di amministrazione resta fuori: è uno strumento, non deve
+  // funzionare offline né essere servita da una copia
+  if (url.pathname.includes('admin')) return;
 
   // Rete per prima, cache come rete di salvataggio. L'ordine inverso
   // (cache-first) è più veloce di un pelo, ma congela il gioco alla versione

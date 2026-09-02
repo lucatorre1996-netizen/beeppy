@@ -359,70 +359,8 @@ export async function submitScore(res) {
   }
 }
 
-// ------------------------------------------------------------- area admin
-//
-// Queste chiamate non "sbloccano" niente: ogni funzione sul database
-// ricontrolla da sé che chi chiama sia amministratore. Qui dentro non c'è
-// nessun controllo di sicurezza, solo comodità — ed è giusto così, perché un
-// controllo scritto nel browser lo si toglie in dieci secondi.
-
-export async function sonoAdmin() {
-  if (!ONLINE || !state.user) return false;
-  try {
-    const c = await client();
-    const { data, error } = await c.rpc('is_admin');
-    if (error) throw error;
-    return data === true;
-  } catch (e) {
-    return false;
-  }
-}
-
-export async function adminGiocatori() {
-  try {
-    const c = await client();
-    const { data, error } = await c.rpc('admin_players');
-    if (error) throw error;
-    return { ok: true, rows: data || [] };
-  } catch (e) {
-    return { ok: false, error: humanAdmin(e), rows: [] };
-  }
-}
-
-export async function adminStats() {
-  try {
-    const c = await client();
-    const { data, error } = await c.rpc('admin_stats');
-    if (error) throw error;
-    return { ok: true, stats: Array.isArray(data) ? data[0] : data };
-  } catch (e) {
-    return { ok: false, error: humanAdmin(e) };
-  }
-}
-
-export async function adminCancellaGiocatore(id) {
-  try {
-    const c = await client();
-    const { error } = await c.rpc('admin_delete_user', { p_id: id });
-    if (error) throw error;
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, error: humanAdmin(e) };
-  }
-}
-
-export async function adminAzzeraPunteggio(id) {
-  try {
-    const c = await client();
-    const { error } = await c.rpc('admin_reset_score', { p_id: id });
-    if (error) throw error;
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, error: humanAdmin(e) };
-  }
-}
-
-// La configurazione la legge chiunque (serve al gioco), la scrive solo un admin.
+// La configurazione la legge chiunque: serve al gioco per mostrare l'annuncio
+// scritto dall'amministratore. La scrittura invece vive solo nella pagina admin.
 export async function leggiConfig() {
   if (!ONLINE) return {};
   try {
@@ -433,27 +371,8 @@ export async function leggiConfig() {
     for (const r of data || []) out[r.chiave] = r.valore;
     return out;
   } catch (e) {
-    return {};
+    return {}; // la tabella potrebbe non esistere ancora: nessun annuncio, nessun danno
   }
-}
-
-export async function adminScriviConfig(chiave, valore) {
-  try {
-    const c = await client();
-    const { error } = await c.rpc('admin_set_config', { p_chiave: chiave, p_valore: valore });
-    if (error) throw error;
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, error: humanAdmin(e) };
-  }
-}
-
-function humanAdmin(e) {
-  const m = String((e && e.message) || e).toLowerCase();
-  if (m.includes('non autorizzato')) return 'Non hai i permessi di amministratore.';
-  if (m.includes('could not find') || m.includes('does not exist'))
-    return 'Funzioni admin non installate: esegui supabase/schema.sql aggiornato.';
-  return human(e);
 }
 
 // --------------------------------------------------- recupero del PIN

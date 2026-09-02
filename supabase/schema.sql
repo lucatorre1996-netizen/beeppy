@@ -407,11 +407,24 @@ grant execute on function public.reset_pin_with_code(text, text, text) to anon, 
 
 alter table public.profiles add column if not exists is_admin boolean not null default false;
 
--- COME DIVENTARE AMMINISTRATORE: esegui una volta questa riga, mettendo il tuo
--- nickname. È volutamente manuale — non esiste nessun modo di auto-promuoversi
--- dall'app.
+-- COME CREARSI UN ACCOUNT AMMINISTRATORE
 --
---   update public.profiles set is_admin = true where lower(nickname) = 'lucatorre';
+-- L'amministratore è un account a parte, con email e password vere: non il
+-- proprio account di gioco, che ha un PIN di quattro cifre e non è una
+-- credenziale adatta a cancellare utenti.
+--
+--   1. Dashboard Supabase → Authentication → Users → "Add user"
+--      email: la tua, password: lunga e solo per questo scopo.
+--      (Il trigger creerà un profilo con un nickname automatico: normale.)
+--   2. Poi esegui qui sotto, con la stessa email:
+--
+--        update public.profiles set is_admin = true
+--         where id = (select id from auth.users where email = 'tua@email.it');
+--
+--   3. Entra da https://tuosito/admin.html con quelle credenziali.
+--
+-- È volutamente manuale: dall'applicazione non esiste nessun modo di
+-- auto-promuoversi amministratore.
 
 create or replace function public.is_admin()
 returns boolean

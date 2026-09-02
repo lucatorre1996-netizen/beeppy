@@ -16,9 +16,11 @@ Ordinate per urgenza: la P0 blocca l'invito agli amici, il resto no.
       funzioni rispondono "Funzione non ancora installata" — verificato, falliscono
       in modo comprensibile e non bloccano il gioco. Rieseguire l'intero file è
       sicuro: è tutto `create or replace` e `if not exists`.
-- [ ] **Diventare amministratore**: dopo lo SQL, esegui una volta
-      `update public.profiles set is_admin = true where lower(nickname) = 'lucatorre';`
-      È volutamente manuale: dall'app non ci si può auto-promuovere.
+- [ ] **Crearsi l'account amministratore**: dashboard Supabase → Authentication →
+      Users → "Add user" con email e una password lunga, poi la riga di SQL che
+      trovi commentata in `supabase/schema.sql`. Si entra da `/admin.html`. È
+      volutamente separato dall'account di gioco: un PIN di quattro cifre non è
+      una credenziale adatta a cancellare utenti.
 - [ ] **Configurare l'SMTP** in Supabase (Project Settings → Authentication → SMTP),
       non nell'app: una password SMTP nel frontend è leggibile da chiunque. Con
       Gmail serve una "password per le app" (Google → Sicurezza → Verifica in due
@@ -58,7 +60,9 @@ Ordinate per urgenza: la P0 blocca l'invito agli amici, il resto no.
       risposta è identica per nickname inesistente e codice errato, così non si può
       scoprire quali nickname esistono.
 
-- [x] ~~Area amministratore~~ — fatta, coi permessi controllati dal database:
+- [x] ~~Area amministratore~~ — fatta come **pagina separata** (`/admin.html`) con
+      credenziali proprie (email e password, non il PIN di gioco) e una sessione
+      distinta da quella del giocatore. Permessi controllati dal database:
       elenco giocatori con azzeramento punteggio ed eliminazione, numeri d'insieme
       (iscritti, partite, nuovi oggi), annuncio mostrato nel menu e interruttore
       per chiudere le registrazioni. Nascondere i pulsanti non protegge niente:

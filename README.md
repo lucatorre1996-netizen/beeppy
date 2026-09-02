@@ -193,6 +193,8 @@ server si ottiene lo stesso punteggio, o si scopre che non torna.
 | `js/audio.js` | effetti sonori sintetizzati con WebAudio (nessun file audio) |
 | `js/biometric.js` | sblocco con Face ID / impronta (WebAuthn come lucchetto locale) |
 | `.github/workflows/keep-alive.yml` | tiene sveglio Supabase: i progetti gratuiti vanno in pausa dopo 7 giorni |
+| `admin.html` + `js/admin.js` | pagina di amministrazione, separata dal gioco e con credenziali proprie |
+| `privacy.html` | informativa privacy |
 | `js/install.js` | invito a installare l'app, diverso fra iOS e Android |
 | `scripts/sim-bot.js` | bot che gioca da solo: serve a tarare la difficoltà senza browser |
 | `scripts/check-fairness.js` | verifica che ogni coppia di tronchi sia raggiungibile in volo |
