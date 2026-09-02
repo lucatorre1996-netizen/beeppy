@@ -2,6 +2,7 @@ import * as net from './net.js';
 import { setMuted } from './audio.js';
 import { initInstall, maybeShowInstallHint, markPlayed } from './install.js';
 import * as bio from './biometric.js';
+import { drawBee } from './render.js';
 
 const $ = (id) => document.getElementById(id);
 let game = null;
@@ -77,6 +78,7 @@ export function initUI(g) {
     err.classList.toggle('hidden', !problema);
   });
 
+  $('btn-delete').addEventListener('click', cancellaAccount);
   $('btn-bio').addEventListener('click', entraConBiometria);
   $('btn-bio-on').addEventListener('click', attivaBiometria);
 
@@ -241,9 +243,9 @@ function openAuth(titolo, modo) {
   $('auth-nobackend').classList.toggle('hidden', logged || configurato);
   $('auth-error').classList.add('hidden');
   if (logged) {
-    $('auth-title').textContent = 'Il tuo account';
-    $('auth-nick').textContent = net.state.user.nickname;
-    $('auth-best').textContent = net.state.best;
+    $('auth-title').textContent = 'Il tuo profilo';
+    riempiProfilo();
+    resetCancellazione();
   } else if (!configurato) {
     $('auth-title').textContent = 'Classifica non configurata';
   } else {
@@ -401,6 +403,7 @@ async function submitAuth(e) {
   ultimoPin = pin;
   $('f-pass').value = '';
   $('f-site').value = '';
+  err.textContent = '';   // altrimenti resta scritto l'errore del tentativo prima
   dopoAccesso();
   // se il punteggio dell'ultima partita non era stato inviato, recuperalo ora
   if (lastResult && lastResult.score > 0) {
@@ -419,6 +422,151 @@ function giaConosciuto() {
 
 function modoPredefinito() {
   return giaConosciuto() ? 'login' : 'signup';
+}
+
+// Cancellazione dell'account: due passaggi voluti. Il primo click cambia il
+// pulsante in una conferma che dice cosa si perde; solo il secondo cancella.
+// Nessuna finestra di sistema: su mobile i confirm() nativi si toccano per
+// sbaglio, e questa è l'azione meno reversibile dell'app.
+let cancellaArmato = false;
+
+function resetCancellazione() {
+  cancellaArmato = false;
+  const b = $('btn-delete');
+  b.textContent = 'Cancella l\'account';
+  b.classList.remove('conferma');
+  b.disabled = false;
+}
+
+async function cancellaAccount() {
+  const b = $('btn-delete');
+  const nota = $('bio-note');
+  if (!cancellaArmato) {
+    cancellaArmato = true;
+    b.textContent = 'Confermi? Perdi record e classifica';
+    b.classList.add('conferma');
+    // se ci ha ripensato e non tocca più nulla, torna come prima
+    setTimeout(() => {
+      if (cancellaArmato) resetCancellazione();
+    }, 6000);
+    return;
+  }
+  b.disabled = true;
+  b.textContent = 'Cancello...';
+  const out = await net.deleteAccount();
+  if (!out.ok) {
+    resetCancellazione();
+    nota.textContent = out.error;
+    nota.classList.remove('hidden');
+    return;
+  }
+  bio.forget();
+  ultimoPin = null;
+  resetCancellazione();
+  closeModal('modal-auth');
+  syncAccountChip();
+  game.toMenu();
+  showScreen('menu');
+  refreshMenu();
+}
+
+// ------------------------------------------------------------- profilo
+
+// Avatar: la stessa ape del gioco, con la tinta ricavata dal nickname. Così
+// ognuno ha la sua senza caricare nessuna immagine, e resta coerente con la
+// scelta di non avere asset esterni.
+function tintaDaNickname(nick) {
+  let h = 2166136261;
+  for (let i = 0; i < nick.length; i++) {
+    h ^= nick.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return Math.abs(h) % 360;
+}
+
+function disegnaAvatar(nick) {
+  const c = $('profilo-avatar');
+  if (!c) return;
+  const x = c.getContext('2d');
+  const tinta = tintaDaNickname(nick || 'ape');
+  x.setTransform(1, 0, 0, 1, 0, 0);
+  x.clearRect(0, 0, c.width, c.height);
+
+  // cielo dell'avatar, con la tinta del giocatore
+  const g = x.createLinearGradient(0, 0, 0, c.height);
+  g.addColorStop(0, `hsl(${tinta} 70% 72%)`);
+  g.addColorStop(1, `hsl(${(tinta + 28) % 360} 62% 52%)`);
+  x.fillStyle = g;
+  x.fillRect(0, 0, c.width, c.height);
+
+  // un paio di granelli di polline, come nel gioco
+  x.fillStyle = 'rgba(255,255,255,0.35)';
+  for (let i = 0; i < 5; i++) {
+    const px = ((tinta * (i + 3)) % 130) + 10;
+    const py = ((tinta * (i + 7)) % 130) + 10;
+    x.beginPath();
+    x.arc(px, py, 2 + (i % 3), 0, 7);
+    x.fill();
+  }
+
+  x.translate(c.width / 2, c.height / 2 + 4);
+  x.scale(1.55, 1.55);
+  drawBee(x, 0, 0, -0.22, 1.4);
+}
+
+function formattaNumero(n) {
+  return (n || 0).toLocaleString('it-IT');
+}
+
+function formattaDistanza(punti) {
+  // ogni tronco superato sono 300 unità di mondo; 100 unità = 1 metro
+  const metri = Math.round((punti || 0) * 3);
+  if (metri < 1000) return metri + ' m';
+  return (metri / 1000).toFixed(1).replace('.', ',') + ' km';
+}
+
+const TRAGUARDI = [
+  { testo: '🌱 Primo volo', ok: (s) => s.partite >= 1 },
+  { testo: '🐝 10 punti', ok: (s) => s.record >= 10 },
+  { testo: '🍯 25 punti', ok: (s) => s.record >= 25 },
+  { testo: '👑 50 punti', ok: (s) => s.record >= 50 },
+  { testo: '🚀 100 punti', ok: (s) => s.record >= 100 },
+  { testo: '💪 50 partite', ok: (s) => s.partite >= 50 },
+  { testo: '🔥 500 partite', ok: (s) => s.partite >= 500 },
+  { testo: '🥇 Primo in classifica', ok: (s) => s.posizione === 1 },
+];
+
+async function riempiProfilo() {
+  const nick = net.state.user ? net.state.user.nickname : '';
+  $('auth-nick').textContent = nick;
+  disegnaAvatar(nick);
+
+  // valori provvisori mentre arrivano i dati veri
+  $('auth-best').textContent = net.state.best;
+  $('profilo-posizione').textContent = 'carico la posizione...';
+  for (const id of ['profilo-partite', 'profilo-battiti', 'profilo-distanza']) $(id).textContent = '–';
+
+  const st = await net.myStats();
+  if (!st.ok) {
+    $('profilo-posizione').textContent = st.error;
+    return;
+  }
+  $('auth-best').textContent = st.record;
+  $('profilo-posizione').textContent = st.posizione
+    ? `${st.posizione}° su ${st.giocatori} in classifica`
+    : 'ancora fuori classifica: fai almeno un punto';
+  $('profilo-partite').textContent = formattaNumero(st.partite);
+  $('profilo-battiti').textContent = formattaNumero(st.battiti);
+  $('profilo-distanza').textContent = formattaDistanza(st.record);
+  if (st.iscrittoDal) {
+    const d = new Date(st.iscrittoDal);
+    $('profilo-dal').textContent = 'nell\'alveare dal ' +
+      d.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
+  }
+
+  $('profilo-traguardi').innerHTML = TRAGUARDI
+    .map((t) => `<span class="traguardo ${t.ok(st) ? 'preso' : ''}">${t.testo}</span>`)
+    .join('');
 }
 
 function dopoAccesso() {

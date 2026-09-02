@@ -205,3 +205,38 @@ $$;
 
 revoke execute on function public.submit_score(int, int, int) from anon, public;
 grant  execute on function public.submit_score(int, int, int) to authenticated;
+
+-- =====================================================================
+--  AGGIUNTA — eseguibile anche su un database dove lo schema c'è già.
+--  Tutto è "create or replace", quindi rieseguire l'intero file è sicuro.
+--
+--  Nota: le statistiche del profilo (partite, battiti d'ali, iscritto dal,
+--  posizione) NON hanno bisogno di funzioni dedicate: profiles e scores sono
+--  già leggibili grazie alle policy RLS, quindi il client le prende da lì.
+-- =====================================================================
+
+-- --------------------------------------------- cancellazione dell'account
+--  Chi si registra deve potersi cancellare, e Apple lo pretende (5.1.1v) da
+--  qualunque app che permetta di creare un account.
+--
+--  Cancellare da auth.users richiede privilegi che il client non ha: questa
+--  funzione è security definer, quindi gira coi permessi del proprietario, ma
+--  può colpire SOLO la riga di chi la chiama (auth.uid()). Profilo e punteggi
+--  se ne vanno in cascata grazie ai vincoli delle tabelle.
+create or replace function public.delete_my_account()
+returns void
+language plpgsql
+security definer set search_path = public, auth
+as $$
+declare
+  v_user uuid := auth.uid();
+begin
+  if v_user is null then
+    raise exception 'utente non autenticato';
+  end if;
+  delete from auth.users where id = v_user;
+end;
+$$;
+
+revoke execute on function public.delete_my_account() from anon, public;
+grant  execute on function public.delete_my_account() to authenticated;

@@ -186,13 +186,32 @@
       </div>
 
       <div id="auth-logged" class="hidden">
-        <p class="logged-as">Sei <b id="auth-nick"></b></p>
-        <div class="over-rows">
-          <div><span>Record</span><b id="auth-best">0</b></div>
+        <div class="profilo-testa">
+          <canvas id="profilo-avatar" width="150" height="150" aria-hidden="true"></canvas>
+          <div class="profilo-nome">
+            <b id="auth-nick"></b>
+            <span id="profilo-dal" class="profilo-dal"></span>
+          </div>
         </div>
+
+        <div class="profilo-record">
+          <span class="stat-k">Record personale</span>
+          <b id="auth-best">0</b>
+          <span id="profilo-posizione" class="profilo-posizione"></span>
+        </div>
+
+        <div class="profilo-griglia">
+          <div><b id="profilo-partite">–</b><span>partite</span></div>
+          <div><b id="profilo-battiti">–</b><span>battiti d'ali</span></div>
+          <div><b id="profilo-distanza">–</b><span>volati</span></div>
+        </div>
+
+        <div id="profilo-traguardi" class="traguardi"></div>
+
         <button id="btn-bio-on" class="btn hidden" type="button">Attiva Face ID</button>
         <p id="bio-note" class="note hidden"></p>
         <button id="btn-signout" class="btn btn-ghost">Esci</button>
+        <button id="btn-delete" class="btn btn-danger" type="button">Cancella l'account</button>
       </div>
     </div>
   </div>
@@ -237,9 +256,10 @@
 // JavaScript vecchio.
 (function () {
   var avviato = false;
-  var codice = ['index.html', 'styles.css', 'js/main.js', 'js/game.js', 'js/sim.js',
-    'js/render.js', 'js/palette.js', 'js/constants.js', 'js/audio.js', 'js/ui.js',
-    'js/net.js', 'js/rng.js', 'js/config.js', 'js/install.js', 'js/biometric.js'];
+  var V = '2';  // stessa versione della import map qui sopra
+  var codice = ['index.html', 'styles.css'].concat(
+    ['main','game','sim','render','palette','constants','audio','ui','net','rng','config','install','biometric']
+      .map(function (m) { return 'js/' + m + '.js?v=' + V; }));
 
   window.beeppyAvviato = function () { avviato = true; };
 
@@ -282,6 +302,35 @@
   });
 })();
 </script>
-<script type="module" src="js/main.js"></script>
+<!-- Versione dei file di codice.
+     A ogni pubblicazione che cambia il JavaScript va alzato il numero qui e
+     nella riga <script> in fondo: gli URL diventano nuovi, quindi nessuna
+     cache — né quella del browser né quella della CDN di Hostinger — può
+     servire una versione vecchia. È la cura definitiva del guaio che ha
+     prodotto la pagina nera: HTML nuovo con JavaScript vecchio.
+     La mappa vive qui perché index.html è l'unico file che Hostinger
+     rivalida sempre. Se il browser non supporta le import map (roba
+     anteriore al 2023) la ignora e il gioco funziona lo stesso, semplicemente
+     senza questa protezione. -->
+<script type="importmap">
+{
+  "imports": {
+      "./js/main.js": "./js/main.js?v=2",
+      "./js/game.js": "./js/game.js?v=2",
+      "./js/sim.js": "./js/sim.js?v=2",
+      "./js/render.js": "./js/render.js?v=2",
+      "./js/palette.js": "./js/palette.js?v=2",
+      "./js/constants.js": "./js/constants.js?v=2",
+      "./js/audio.js": "./js/audio.js?v=2",
+      "./js/ui.js": "./js/ui.js?v=2",
+      "./js/net.js": "./js/net.js?v=2",
+      "./js/rng.js": "./js/rng.js?v=2",
+      "./js/config.js": "./js/config.js?v=2",
+      "./js/install.js": "./js/install.js?v=2",
+      "./js/biometric.js": "./js/biometric.js?v=2"
+  }
+}
+</script>
+<script type="module" src="js/main.js?v=2"></script>
 </body>
 </html>

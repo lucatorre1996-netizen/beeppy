@@ -7,42 +7,45 @@ Ordinate per urgenza: la P0 blocca l'invito agli amici, il resto no.
 
 ## P0 — prima di far entrare gente
 
-- [ ] **Cancellare l'account di collaudo `verifica_prod`** dalla dashboard Supabase
-      (Authentication → Users). Ha 60 punti ed è **primo in classifica**: chi arriva
-      vede in testa un nickname che non conosce. La cancellazione porta via anche
-      profilo e punteggio, che sono in cascata.
+- [x] ~~Cancellare l'account di collaudo `verifica_prod`~~ — fatto.
+- [ ] **Eseguire il nuovo `supabase/schema.sql`** nel SQL Editor: aggiunge
+      `delete_my_account()`, senza la quale il pulsante "Cancella l'account" nel
+      profilo risponde "Funzione non ancora installata". Rieseguire l'intero file
+      è sicuro: è tutto `create or replace`.
+- [ ] **Cancellare `test_profilo`**, l'account con cui ho provato la scheda. Ha
+      zero punti, quindi non compare in classifica e non disturba nessuno. Dopo
+      aver eseguito lo SQL puoi cancellarlo **dall'app stessa**, che è anche il
+      modo di collaudare la funzione nuova.
 - [ ] **Finire la verifica in produzione.** Confermati sul sito pubblicato: avvio,
       vincolo dell'account, registrazione con PIN, partita reale da 60 punti in 60
       secondi con invio del punteggio e posizione #1, difese del form (PIN corto,
       campo trappola, nickname di spam respinto dal database). **Non ancora
       verificati**: la modale della classifica, la registrazione del service worker
       su HTTPS, l'installazione come app.
+- [ ] **Controllare la import map dopo la prossima pubblicazione**: in produzione i
+      moduli devono caricarsi dagli URL con `?v=`. Verificato in locale (tutti e 13,
+      comprese le dipendenze annidate), non ancora sul sito vero.
 - [ ] **Provare sull'iPhone vero** tre cose che in un browser da scrivania non si
       possono verificare: il tocco tenuto premuto (non deve più selezionare la
       pagina), l'aggiunta alla schermata Home con la sua schermata di avvio, e lo
       sblocco con Face ID, che richiede HTTPS e quindi funziona solo ora che il
       sito è pubblicato.
 
+- [x] ~~Ping anti-pausa per Supabase~~ — fatto con un workflow GitHub Actions
+      (`.github/workflows/keep-alive.yml`) che legge la classifica ogni 6 ore.
+      Nessun servizio esterno, nessun costo. **Attenzione**: GitHub sospende i
+      workflow programmati sui repository fermi da 60 giorni.
+
 ## P1 — prodotto
 
 ### Scheda profilo più ricca
 
 Oggi la schermata dell'account mostra nickname, record e poco altro. Da fare una
-scheda vera. **Con i dati che il database ha già** (nessuna modifica allo schema):
-
-- [ ] Avatar generato dal nickname — un'ape con colori ricavati da un hash del
-      nome, così ognuno ha la sua senza caricare nessuna immagine (coerente con la
-      scelta di avere zero asset esterni)
-- [ ] Record personale in evidenza e **posizione in classifica** (già calcolata
-      dalla vista `leaderboard`)
-- [ ] **Partite giocate** (`games_played`)
-- [ ] **Battiti d'ali totali** (`total_flaps`) — statistica inutile e simpatica,
-      di quelle che si raccontano
-- [ ] **Membro dal** (`profiles.created_at`)
-- [ ] **Distanza percorsa**, calcolabile senza nuovi dati: punti × 300 unità
-      di mondo, convertite in metri con un fattore inventato ma coerente
-- [ ] Traguardi sbloccati (10, 25, 50, 100 punti; 50 e 500 partite), tutti
-      derivabili dai contatori esistenti
+scheda vera. **Fatta** la parte che non richiede modifiche allo schema: avatar generato dal
+nickname (l'ape del gioco, con la tinta ricavata da un hash del nome), record in
+evidenza con la posizione in classifica, partite giocate, battiti d'ali totali,
+distanza percorsa, "nell'alveare dal", otto traguardi che si accendono. Più la
+cancellazione dell'account, con doppia conferma.
 
 **Cosa richiede invece modifiche al database**, da decidere se vale:
 
@@ -74,10 +77,9 @@ Google 25 $ una tantum, e la review di Apple è il vero ostacolo (linee guida 4.
 
 - [ ] Aggiornare **Node** (ora la 16, serve almeno la 20) e installare Android Studio
 - [ ] Montare **Capacitor** con i due progetti nativi (`it.beezy.beeppy`)
-- [ ] **Cancellazione dell'account dall'app** — obbligo Apple (5.1.1v) per ogni app
-      che permette di registrarsi. Richiede una Edge Function su Supabase, perché
-      cancellare un utente vuole la chiave amministrativa. **Da fare comunque,
-      store o no: è corretto verso chi si registra.**
+- [x] ~~Cancellazione dell'account dall'app~~ — fatta, e senza Edge Function: una
+      funzione `security definer` nel database può cancellare da `auth.users`, ma
+      solo la riga di chi la chiama. Resta da eseguire lo SQL (vedi P0).
 - [ ] **Informativa privacy** su URL pubblico + questionari App Privacy (Apple) e
       Data Safety (Google)
 - [ ] **Consenso GDPR** con una CMP certificata (Google UMP) e prompt **ATT** su iOS
@@ -111,8 +113,10 @@ Appunti da rileggere prima di dare la colpa al codice.
   (è successo: `styles.css`, `main.js`, `net.js` e `sw.js` erano rimasti indietro).
   Come si riconosce: negli header, `last-modified` vecchio con
   `cache-control: public, max-age=604800` e `x-hcdn-cache-status: HIT`.
-  Soluzione definitiva sarebbe **versionare gli URL** dei file a ogni
-  pubblicazione, così la CDN non può servire niente di vecchio.
+  **Curato**: gli URL dei moduli sono versionati con una import map dichiarata in
+  `index.html` (l'unico file che Hostinger rivalida sempre). Alzando il numero di
+  versione a ogni pubblicazione che tocca il JavaScript, nessuna cache può servire
+  codice vecchio. Vedi la procedura nel README.
 - **La protezione anti-bot di Hostinger** risponde con una pagina HTML
   ("Checking your browser before accessing") al posto dei file, se arrivano molte
   richieste automatiche ravvicinate. Se un controllo da riga di comando dà
@@ -126,6 +130,4 @@ Appunti da rileggere prima di dare la colpa al codice.
 
 ## Piccolezze
 
-- [ ] Il messaggio d'errore della schermata di accesso non viene azzerato dopo una
-      registrazione riuscita: resta scritto nel DOM, invisibile perché la modale si
-      chiude, e viene nascosto alla riapertura. Nessuno lo vede, ma è disordine.
+- [x] ~~Il messaggio d'errore non azzerato dopo una registrazione riuscita~~ — fatto.

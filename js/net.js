@@ -211,7 +211,7 @@ async function loadProfile(userId) {
   // maybeSingle e non single: quando la riga non c'è, single risponde 406 e
   // riempie la console di errori invece di dire semplicemente "nessun profilo".
   const [{ data: prof }, { data: sc }] = await Promise.all([
-    c.from('profiles').select('nickname').eq('id', userId).maybeSingle(),
+    c.from('profiles').select('nickname, created_at').eq('id', userId).maybeSingle(),
     c.from('scores').select('best_score').eq('user_id', userId).maybeSingle(),
   ]);
 
@@ -354,6 +354,68 @@ export async function submitScore(res) {
     setLocalBest(res.score);
     state.best = Math.max(state.best, res.score);
     return { ok: false, error: human(e), best: state.best, isRecord: eraRecordLocale };
+  }
+}
+
+// Statistiche per la scheda profilo. Non serve nessuna funzione dedicata sul
+// database: profiles e scores sono leggibili grazie alle policy RLS, e la
+// posizione si ottiene contando quanti hanno fatto meglio — una domanda che
+// PostgREST sa rispondere senza scaricare la classifica intera.
+export async function myStats() {
+  if (!ONLINE || !state.user) return { ok: false, error: 'Non hai fatto l\'accesso.' };
+  try {
+    const c = await client();
+    const id = state.user.id;
+    const [prof, sc, giocatori] = await Promise.all([
+      c.from('profiles').select('nickname, created_at').eq('id', id).maybeSingle(),
+      c.from('scores').select('best_score, games_played, total_flaps').eq('user_id', id).maybeSingle(),
+      c.from('scores').select('user_id', { count: 'exact', head: true }).gt('best_score', 0),
+    ]);
+    const record = sc.data ? sc.data.best_score : 0;
+    // quanti hanno un record più alto del mio: la mia posizione è il loro numero + 1
+    const { count: davanti } = await c
+      .from('scores')
+      .select('user_id', { count: 'exact', head: true })
+      .gt('best_score', record);
+
+    return {
+      ok: true,
+      nickname: prof.data ? prof.data.nickname : state.user.nickname,
+      iscrittoDal: prof.data ? prof.data.created_at : null,
+      record,
+      partite: sc.data ? sc.data.games_played : 0,
+      battiti: sc.data ? Number(sc.data.total_flaps) : 0,
+      posizione: record > 0 ? (davanti || 0) + 1 : null,
+      giocatori: giocatori.count || 0,
+    };
+  } catch (e) {
+    return { ok: false, error: human(e) };
+  }
+}
+
+// Cancella l'account e tutto ciò che gli appartiene. Passa da una funzione del
+// database perché eliminare un utente richiede privilegi che il client non ha;
+// quella funzione può colpire solo chi la chiama.
+export async function deleteAccount() {
+  if (!ONLINE || !state.user) return { ok: false, error: 'Non hai fatto l\'accesso.' };
+  try {
+    const c = await client();
+    const { error } = await c.rpc('delete_my_account');
+    if (error) throw error;
+    await signOut();
+    // via anche le tracce locali: record, nickname ricordato, sblocco biometrico
+    try {
+      localStorage.removeItem(LS.best);
+      localStorage.removeItem(LS.nick);
+      localStorage.removeItem('beeppy.biometric');
+    } catch (e) { /* niente */ }
+    state.best = 0;
+    return { ok: true };
+  } catch (e) {
+    const m = String((e && e.message) || e).toLowerCase();
+    if (m.includes('could not find') || m.includes('does not exist') || m.includes('404'))
+      return { ok: false, error: 'Funzione non ancora installata: esegui supabase/schema.sql aggiornato.' };
+    return { ok: false, error: human(e) };
   }
 }
 

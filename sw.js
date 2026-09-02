@@ -1,5 +1,6 @@
 // Cache "app shell": il gioco si apre anche senza rete (la classifica no).
-const CACHE = 'beeppy-v2';
+const CACHE = 'beeppy-v3';
+const V = '2'; // deve combaciare con la import map in index.html
 const ASSETS = [
   './',
   'index.html',
@@ -8,19 +9,19 @@ const ASSETS = [
   'assets/icon.svg',
   'assets/bee.svg',
   'assets/icon-192.png',
-  'js/main.js',
-  'js/game.js',
-  'js/sim.js',
-  'js/render.js',
-  'js/palette.js',
-  'js/constants.js',
-  'js/audio.js',
-  'js/ui.js',
-  'js/net.js',
-  'js/install.js',
-  'js/biometric.js',
-  'js/rng.js',
-  'js/config.js',
+  `js/main.js?v=${V}`,
+  `js/game.js?v=${V}`,
+  `js/sim.js?v=${V}`,
+  `js/render.js?v=${V}`,
+  `js/palette.js?v=${V}`,
+  `js/constants.js?v=${V}`,
+  `js/audio.js?v=${V}`,
+  `js/ui.js?v=${V}`,
+  `js/net.js?v=${V}`,
+  `js/install.js?v=${V}`,
+  `js/biometric.js?v=${V}`,
+  `js/rng.js?v=${V}`,
+  `js/config.js?v=${V}`,
 ];
 
 self.addEventListener('install', (e) => {

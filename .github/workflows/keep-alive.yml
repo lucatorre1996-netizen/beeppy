@@ -1,0 +1,43 @@
+# Tiene sveglio il progetto Supabase.
+#
+# I progetti sul piano gratuito vengono messi in pausa dopo 7 giorni senza
+# attività, e per Beeppy non significa "niente classifica": significa gioco
+# bloccato, perché per giocare serve l'account e l'account vive lì. Chi trova
+# la porta chiusa non torna una seconda volta.
+#
+# Una richiesta di lettura ogni 6 ore basta a contare come attività. Costa
+# zero: i minuti di GitHub Actions sui repository pubblici sono gratuiti, e
+# ogni esecuzione dura pochi secondi.
+#
+# ATTENZIONE: GitHub sospende i workflow programmati sui repository fermi da
+# 60 giorni. Se il progetto resta senza commit per due mesi, riattivalo dalla
+# scheda Actions (oppure fai un commit qualsiasi).
+name: Tieni sveglio Supabase
+
+on:
+  schedule:
+    - cron: '17 */6 * * *'   # ogni 6 ore, al minuto 17 (fuori dagli orari di punta)
+  workflow_dispatch:          # e a mano dal pulsante "Run workflow"
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Leggi la classifica
+        env:
+          URL: https://capyfbcjxkjkyeigciqb.supabase.co
+          # chiave pubblica: è la stessa che sta nel codice del sito
+          KEY: sb_publishable_5_QrCuMpAcg2U9CKayRb2g_dbgRQvdi
+        run: |
+          set -e
+          codice=$(curl -s -o /tmp/risposta.json -w '%{http_code}' \
+            -H "apikey: $KEY" \
+            "$URL/rest/v1/leaderboard?select=nickname,best_score&limit=1")
+          echo "HTTP $codice"
+          echo "risposta: $(cat /tmp/risposta.json)"
+          if [ "$codice" != "200" ]; then
+            echo "::error::Supabase non risponde come dovrebbe (HTTP $codice)."
+            echo "::error::Se il progetto è in pausa, riattivalo da supabase.com/dashboard."
+            exit 1
+          fi
+          echo "Progetto sveglio."

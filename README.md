@@ -192,6 +192,7 @@ server si ottiene lo stesso punteggio, o si scopre che non torna.
 | `js/ui.js` | schermate, login, classifica |
 | `js/audio.js` | effetti sonori sintetizzati con WebAudio (nessun file audio) |
 | `js/biometric.js` | sblocco con Face ID / impronta (WebAuthn come lucchetto locale) |
+| `.github/workflows/keep-alive.yml` | tiene sveglio Supabase: i progetti gratuiti vanno in pausa dopo 7 giorni |
 | `js/install.js` | invito a installare l'app, diverso fra iOS e Android |
 | `scripts/sim-bot.js` | bot che gioca da solo: serve a tarare la difficoltà senza browser |
 | `scripts/check-fairness.js` | verifica che ogni coppia di tronchi sia raggiungibile in volo |
@@ -276,6 +277,18 @@ la cartella va pubblicata così com'è.
 3. **Deploy**. Per gli aggiornamenti successivi basta *Deploy* di nuovo, oppure
    configura il webhook che Hostinger fornisce e aggiungilo su GitHub
    (Settings → Webhooks) per pubblicare a ogni push.
+
+### Un passaggio obbligatorio quando cambi il JavaScript
+
+Prima di pubblicare, **alza il numero di versione in due punti di `index.html`**:
+la `<script type="importmap">` e la riga `<script type="module" src="js/main.js?v=N">`
+in fondo (per coerenza anche `const V` in [`sw.js`](sw.js)).
+
+Non è un vezzo. Hostinger ha una CDN davanti al sito che può continuare a servire i
+file vecchi anche dopo la pubblicazione, e il purge dalla dashboard a volte è
+parziale: è già successo di ritrovarsi l'HTML nuovo con il JavaScript vecchio, cioè
+un'app che si comporta in un modo che non esiste in nessuna versione. Cambiando il
+numero, gli URL diventano nuovi e nessuna cache può avere niente in mano.
 
 Due cose a cui fare attenzione:
 

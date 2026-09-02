@@ -405,3 +405,84 @@ code {
 .install-actions { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
 .install-actions .btn { flex: 1; min-height: 46px; font-size: 17px; }
 .install-actions .btn-ghost { flex: 0 0 auto; margin-left: auto; } /* da solo va a destra */
+
+/* ------------------------------------------------------ scheda profilo */
+.profilo-testa {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 16px 0 14px;
+}
+#profilo-avatar {
+  width: 75px;
+  height: 75px;
+  flex: 0 0 auto;
+  border-radius: 20px;
+  background: linear-gradient(160deg, #9adcef, #3fb0dd);
+  box-shadow: 0 4px 12px rgba(23, 16, 8, 0.2);
+}
+.profilo-nome { min-width: 0; }
+.profilo-nome b {
+  display: block;
+  font-size: 23px;
+  font-weight: 800;
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.profilo-dal { font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+
+.profilo-record {
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255,197,66,0.32), rgba(255,197,66,0.14));
+  box-shadow: inset 0 0 0 2px rgba(255, 197, 66, 0.55);
+  text-align: center;
+}
+.profilo-record b { display: block; font-size: 44px; font-weight: 800; line-height: 1.05; }
+.profilo-posizione { font-size: 14px; font-weight: 700; color: var(--ink-soft); }
+
+.profilo-griglia {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+.profilo-griglia > div {
+  padding: 10px 6px;
+  border-radius: 14px;
+  background: rgba(43, 33, 24, 0.05);
+  text-align: center;
+}
+.profilo-griglia b { display: block; font-size: 20px; font-weight: 800; line-height: 1.2; }
+.profilo-griglia span { font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.4px; }
+
+.traguardi { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.traguardo {
+  padding: 6px 11px;
+  border-radius: 999px;
+  background: rgba(43, 33, 24, 0.06);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.traguardo.preso {
+  background: linear-gradient(180deg, #ffd569, var(--honey));
+  color: var(--ink);
+  box-shadow: 0 2px 0 var(--honey-dark);
+}
+
+.btn-danger {
+  background: transparent;
+  box-shadow: none;
+  color: #a3231b;
+  font-size: 15px;
+  min-height: 42px;
+  text-decoration: underline;
+}
+.btn-danger.conferma {
+  background: #a3231b;
+  color: #fff;
+  text-decoration: none;
+  box-shadow: 0 4px 0 #7d1a14;
+}
