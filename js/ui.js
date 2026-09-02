@@ -3,6 +3,7 @@ import { setMuted } from './audio.js';
 import { initInstall, maybeShowInstallHint, markPlayed, isStandalone,
          preparaSchermataInstallazione, chiediInstallazione, promptDisponibile } from './install.js';
 import * as bio from './biometric.js';
+import * as push from './push.js';
 import { drawBee } from './render.js';
 
 const $ = (id) => document.getElementById(id);
@@ -108,6 +109,24 @@ export function initUI(g) {
   $('recupero-form').addEventListener('submit', inviaRecupero);
   $('dati-form').addEventListener('submit', salvaDati);
   $('email-form').addEventListener('submit', salvaEmailMancante);
+  $('notifiche-si').addEventListener('click', attivaNotifiche);
+  $('notifiche-no').addEventListener('click', () => {
+    $('invito-notifiche').classList.add('hidden');
+    // segnato come già chiesto: non lo riproponiamo a ogni partita
+    try { localStorage.setItem('beeppy.push.chiesto', '1'); } catch (e) { /* niente */ }
+  });
+  $('btn-notifiche').addEventListener('click', cambiaNotifiche);
+  $('btn-notifiche-prova').addEventListener('click', async () => {
+    const b = $('btn-notifiche-prova');
+    const nota = $('notifiche-nota');
+    b.disabled = true;
+    const out = await push.prova();
+    b.disabled = false;
+    if (!out.ok) {
+      nota.textContent = out.error;
+      nota.classList.remove('hidden');
+    }
+  });
   $('avatar-scegli').addEventListener('click', () => $('avatar-file').click());
   $('avatar-file').addEventListener('change', scegliFoto);
   $('avatar-rimuovi').addEventListener('click', togliFoto);
@@ -229,6 +248,7 @@ async function onGameOver(res) {
   $('record-badge').classList.add('hidden');
   $('over-status').textContent = net.state.user ? 'Invio del punteggio...' : '';
 
+  proponiNotifiche();
   const out = await net.submitScore(res);
   $('over-best').textContent = out.best;
   if (out.isRecord && res.score > 0) $('record-badge').classList.remove('hidden');
@@ -729,6 +749,88 @@ async function cancellaAccount() {
   refreshMenu();
 }
 
+// ---------------------------------------------------------- notifiche
+//
+// L'invito compare a fine partita e non all'apertura: chiedere il permesso
+// appena si entra è il modo più sicuro per farselo negare, e dopo un rifiuto
+// il browser non lo richiede più. A fine partita, invece, il momento ha senso
+// e la domanda si spiega da sé.
+const CHIAVE_PARTITE = 'beeppy.partiteGiocate';
+
+function partiteGiocate() {
+  try {
+    return Number(localStorage.getItem(CHIAVE_PARTITE) || 0);
+  } catch (e) {
+    return 0;
+  }
+}
+
+function proponiNotifiche() {
+  let n = partiteGiocate() + 1;
+  try { localStorage.setItem(CHIAVE_PARTITE, String(n)); } catch (e) { /* niente */ }
+  // dalla seconda partita: alla prima uno sta ancora capendo cos'è il gioco
+  const mostra = n >= 2 && net.state.user &&
+                 push.haSensoProporle(isStandalone());
+  $('invito-notifiche').classList.toggle('hidden', !mostra);
+}
+
+async function attivaNotifiche() {
+  const box = $('invito-notifiche');
+  const btn = $('notifiche-si');
+  btn.disabled = true;
+  btn.textContent = 'Attendi...';
+  const out = await push.attiva();
+  btn.disabled = false;
+  btn.textContent = 'Sì, avvisami';
+  box.classList.add('hidden');
+  if (!out.ok) {
+    $('over-status').textContent = out.error;
+  } else {
+    $('over-status').textContent = 'Ti avviserò quando qualcuno ti supera.';
+  }
+}
+
+// Interruttore nel profilo, per chi cambia idea in un senso o nell'altro.
+async function syncNotifiche() {
+  const btn = $('btn-notifiche');
+  const nota = $('notifiche-nota');
+  btn.classList.add('hidden');
+  $('btn-notifiche-prova').classList.add('hidden');
+  nota.classList.add('hidden');
+
+  if (!push.supportate()) {
+    const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    nota.textContent = iOS && !isStandalone()
+      ? 'Le notifiche su iPhone arrivano solo se aggiungi Beeppy alla schermata Home.'
+      : 'Le notifiche non sono disponibili su questo dispositivo.';
+    nota.classList.remove('hidden');
+    return;
+  }
+  const attive = await push.giaIscritto();
+  btn.textContent = attive ? 'Disattiva le notifiche' : 'Attiva le notifiche';
+  btn.dataset.attive = attive ? 'si' : 'no';
+  btn.classList.remove('hidden');
+  $('btn-notifiche-prova').classList.remove('hidden');
+  if (push.permesso() === 'denied') {
+    nota.textContent = 'Le hai rifiutate: per riattivarle servono le impostazioni del telefono.';
+    nota.classList.remove('hidden');
+    btn.classList.add('hidden');
+  }
+}
+
+async function cambiaNotifiche() {
+  const btn = $('btn-notifiche');
+  const nota = $('notifiche-nota');
+  btn.disabled = true;
+  const out = btn.dataset.attive === 'si' ? await push.disattiva() : await push.attiva();
+  btn.disabled = false;
+  if (!out.ok) {
+    nota.textContent = out.error;
+    nota.classList.remove('hidden');
+  }
+  syncNotifiche();
+}
+
 // ------------------------------------------------------------- profilo
 
 // Avatar: la stessa ape del gioco, con la tinta ricavata dal nickname. Così
@@ -868,6 +970,7 @@ async function riempiProfilo() {
 
   riempiStorico(st.record);
   riempiDati();
+  syncNotifiche();
 }
 
 async function riempiDati() {

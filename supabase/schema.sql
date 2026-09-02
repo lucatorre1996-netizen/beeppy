@@ -726,3 +726,57 @@ $$;
 
 revoke execute on function public.set_avatar(boolean) from anon, public;
 grant  execute on function public.set_avatar(boolean) to authenticated;
+
+-- =====================================================================
+--  NOTIFICHE PUSH
+--
+--  Su iPhone le notifiche web arrivano SOLO a chi ha aggiunto il gioco alla
+--  schermata Home (da iOS 16.4). Su Android anche dal browser.
+--
+--  Chi le spedisce è un lavoro programmato su GitHub Actions: la chiave
+--  privata necessaria per firmarle non può stare nel browser, e questa è la
+--  strada che non richiede di installare nulla.
+-- =====================================================================
+
+create table if not exists public.push_iscrizioni (
+  id         bigserial primary key,
+  user_id    uuid not null references auth.users on delete cascade,
+  endpoint   text not null unique,
+  p256dh     text not null,
+  auth       text not null,
+  creato     timestamptz not null default now(),
+  ultimo_uso timestamptz
+);
+
+create index if not exists push_iscrizioni_user_idx on public.push_iscrizioni (user_id);
+
+alter table public.push_iscrizioni enable row level security;
+
+-- Ognuno vede e gestisce solo le proprie iscrizioni. Chi spedisce le legge
+-- con la chiave di servizio, che scavalca le policy per definizione.
+drop policy if exists "ognuno vede le proprie iscrizioni push" on public.push_iscrizioni;
+create policy "ognuno vede le proprie iscrizioni push"
+  on public.push_iscrizioni for select using (auth.uid() = user_id);
+
+drop policy if exists "ognuno crea le proprie iscrizioni push" on public.push_iscrizioni;
+create policy "ognuno crea le proprie iscrizioni push"
+  on public.push_iscrizioni for insert to authenticated
+  with check (auth.uid() = user_id);
+
+drop policy if exists "ognuno cancella le proprie iscrizioni push" on public.push_iscrizioni;
+create policy "ognuno cancella le proprie iscrizioni push"
+  on public.push_iscrizioni for delete using (auth.uid() = user_id);
+
+--  Memoria di cosa è già stato mandato a chi: serve a due cose diverse e
+--  entrambe importanti. A capire chi è stato superato (confrontando la
+--  posizione con quella dell'ultima volta) e a non diventare uno spammone —
+--  una notifica ogni due giorni per persona, non una al giorno.
+create table if not exists public.push_stato (
+  user_id        uuid primary key references auth.users on delete cascade,
+  posizione      int,
+  ultima_inviata timestamptz,
+  ultimo_tipo    text
+);
+
+alter table public.push_stato enable row level security;
+-- nessuna policy: ci accede solo chi spedisce, con la chiave di servizio

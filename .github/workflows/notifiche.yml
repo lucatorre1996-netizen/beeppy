@@ -1,0 +1,72 @@
+# Manda le notifiche ai giocatori.
+#
+# Gira qui e non nel browser perché firmarle richiede una chiave privata, che
+# nel frontend sarebbe leggibile da chiunque.
+#
+# PRIMA DI ACCENDERLO servono tre segreti nel repository
+# (Settings → Secrets and variables → Actions → New repository secret):
+#
+#   VAPID_PRIVATE_KEY       la chiave privata, da `npm run chiavi-push`
+#   VAPID_PUBLIC_KEY        la chiave pubblica, la stessa che sta in js/config.js
+#   SUPABASE_SERVICE_ROLE   Project Settings → API → service_role
+#                           (scavalca ogni permesso: non deve uscire da qui)
+#
+# Finché mancano, il lavoro gira a vuoto e si limita a dire cosa avrebbe mandato:
+# così si possono controllare le regole senza disturbare nessuno.
+name: Notifiche ai giocatori
+
+on:
+  schedule:
+    - cron: '0 17 * * *'    # ogni giorno alle 19:00 italiane (18:00 d'inverno)
+  workflow_dispatch:
+    inputs:
+      titolo:
+        description: 'Titolo (lascia vuoto per le notifiche automatiche)'
+        required: false
+      testo:
+        description: 'Testo dell annuncio'
+        required: false
+      manda:
+        description: 'Spedire davvero? Senza spunta fa solo la prova a vuoto'
+        type: boolean
+        default: false
+
+jobs:
+  notifiche:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Installa la libreria per l'invio
+        run: npm install web-push@3 --no-save
+
+      - name: Decidi e manda
+        env:
+          SUPABASE_URL: https://capyfbcjxkjkyeigciqb.supabase.co
+          SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
+          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT: mailto:lucatorre1996@gmail.com
+        run: |
+          set -e
+          if [ -z "$SUPABASE_SERVICE_ROLE" ]; then
+            echo "::warning::Segreti non configurati: niente da fare."
+            echo "Aggiungi VAPID_PRIVATE_KEY, VAPID_PUBLIC_KEY e SUPABASE_SERVICE_ROLE"
+            echo "in Settings → Secrets and variables → Actions."
+            exit 0
+          fi
+
+          ARG=""
+          # l'invio automatico parte dal cron; a mano solo con la spunta
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.manda }}" = "true" ]; then
+            ARG="--manda"
+          fi
+          if [ -n "${{ inputs.titolo }}" ]; then
+            ARG="$ARG --titolo \"${{ inputs.titolo }}\" --testo \"${{ inputs.testo }}\""
+          fi
+
+          eval node scripts/notifiche/invia.js $ARG

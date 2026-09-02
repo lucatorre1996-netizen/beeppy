@@ -8,7 +8,10 @@
     "dev": "node scripts/serve.js",
     "test:sim": "node scripts/sim-check.js",
     "test:fairness": "node scripts/check-fairness.js",
-    "test": "npm run check && node scripts/sim-check.js && node scripts/check-fairness.js",
-    "check": "node -e \"const{execSync}=require('child_process'),fs=require('fs'),os=require('os'),p=require('path');const t=fs.mkdtempSync(p.join(os.tmpdir(),'beeppy-'));let bad=0;for(const f of fs.readdirSync('js')){const m=p.join(t,f.replace(/\\\\.js$/,'.mjs'));fs.copyFileSync(p.join('js',f),m);try{execSync('node --check '+m,{stdio:'pipe'})}catch(e){console.error('ERRORE',f,String(e.stderr).split('\\\\n')[2]||'');bad++}}console.log(bad?bad+' file con errori':'sintassi dei moduli: ok');process.exit(bad?1:0)\""
+    "test": "npm run check && node scripts/sim-check.js && node scripts/check-fairness.js && node scripts/notifiche/test.js",
+    "check": "node scripts/check.js",
+    "chiavi-push": "node scripts/genera-chiavi-push.js",
+    "test:notifiche": "node scripts/notifiche/test.js",
+    "aggiorna-supabase": "bash scripts/aggiorna-supabase.sh"
   }
 }

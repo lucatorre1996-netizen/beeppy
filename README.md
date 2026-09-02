@@ -10,6 +10,9 @@ Account con nickname e **classifica mondiale condivisa**.
 - **Backend**: Supabase (autenticazione + Postgres + Row Level Security).
 - **PWA**: installabile sulla home del telefono, giocabile anche offline.
 
+Le notifiche — quali sono, quando arrivano, come si accendono — stanno in
+[NOTIFICHE.md](NOTIFICHE.md).
+
 Le cose da fare sono in [TODO.md](TODO.md), insieme agli appunti sulle trappole
 già incontrate (cache della CDN, service worker) che conviene rileggere prima di
 dare la colpa al codice.

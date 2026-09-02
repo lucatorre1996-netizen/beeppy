@@ -101,6 +101,14 @@
         <div><span>Posizione</span><b id="over-rank">-</b></div>
       </div>
       <p id="over-status" class="note"></p>
+      <div id="invito-notifiche" class="invito hidden">
+        <p>Ti avviso quando qualcuno ti supera in classifica?</p>
+        <div class="invito-azioni">
+          <button id="notifiche-si" class="btn btn-primary" type="button">Sì, avvisami</button>
+          <button id="notifiche-no" class="btn btn-ghost" type="button">No grazie</button>
+        </div>
+      </div>
+
       <div class="menu-actions">
         <button id="btn-again" class="btn btn-primary">Rigioca</button>
         <button id="btn-lb2" class="btn">Classifica</button>
@@ -351,6 +359,9 @@
           <ul id="storico-lista" class="storico-lista"></ul>
         </div>
 
+        <button id="btn-notifiche" class="btn hidden" type="button">Attiva le notifiche</button>
+        <button id="btn-notifiche-prova" class="btn btn-ghost hidden" type="button">Mandami una notifica di prova</button>
+        <p id="notifiche-nota" class="note hidden"></p>
         <button id="btn-bio-on" class="btn hidden" type="button">Attiva Face ID</button>
         <p id="bio-note" class="note hidden"></p>
         <button id="btn-signout" class="btn">Esci dall'account</button>
@@ -399,7 +410,7 @@
 // JavaScript vecchio.
 (function () {
   var avviato = false;
-  var V = '10';  // stessa versione della import map qui sopra
+  var V = '11';  // stessa versione della import map qui sopra
   var codice = ['index.html', 'styles.css'].concat(
     ['main','game','sim','render','palette','constants','audio','ui','net','rng','config','install','biometric']
       .map(function (m) { return 'js/' + m + '.js?v=' + V; }));
@@ -458,22 +469,23 @@
 <script type="importmap">
 {
   "imports": {
-      "./js/main.js": "./js/main.js?v=10",
-      "./js/game.js": "./js/game.js?v=10",
-      "./js/sim.js": "./js/sim.js?v=10",
-      "./js/render.js": "./js/render.js?v=10",
-      "./js/palette.js": "./js/palette.js?v=10",
-      "./js/constants.js": "./js/constants.js?v=10",
-      "./js/audio.js": "./js/audio.js?v=10",
-      "./js/ui.js": "./js/ui.js?v=10",
-      "./js/net.js": "./js/net.js?v=10",
-      "./js/rng.js": "./js/rng.js?v=10",
-      "./js/config.js": "./js/config.js?v=10",
-      "./js/install.js": "./js/install.js?v=10",
-      "./js/biometric.js": "./js/biometric.js?v=10"
+      "./js/main.js": "./js/main.js?v=11",
+      "./js/game.js": "./js/game.js?v=11",
+      "./js/sim.js": "./js/sim.js?v=11",
+      "./js/render.js": "./js/render.js?v=11",
+      "./js/palette.js": "./js/palette.js?v=11",
+      "./js/constants.js": "./js/constants.js?v=11",
+      "./js/audio.js": "./js/audio.js?v=11",
+      "./js/ui.js": "./js/ui.js?v=11",
+      "./js/net.js": "./js/net.js?v=11",
+      "./js/rng.js": "./js/rng.js?v=11",
+      "./js/config.js": "./js/config.js?v=11",
+      "./js/install.js": "./js/install.js?v=11",
+      "./js/biometric.js": "./js/biometric.js?v=11",
+      "./js/push.js": "./js/push.js?v=11"
   }
 }
 </script>
-<script type="module" src="js/main.js?v=10"></script>
+<script type="module" src="js/main.js?v=11"></script>
 </body>
 </html>

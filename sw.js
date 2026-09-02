@@ -1,6 +1,6 @@
 // Cache "app shell": il gioco si apre anche senza rete (la classifica no).
-const CACHE = 'beeppy-v11';
-const V = '10'; // deve combaciare con la import map in index.html
+const CACHE = 'beeppy-v12';
+const V = '11'; // deve combaciare con la import map in index.html
 const ASSETS = [
   './',
   'index.html',
@@ -23,6 +23,15 @@ const ASSETS = [
   `js/biometric.js?v=${V}`,
   `js/rng.js?v=${V}`,
   `js/config.js?v=${V}`,
+  `js/push.js?v=${V}`,
+  // copia locale del client Supabase: senza questa, offline non si può
+  // nemmeno leggere la sessione salvata
+  'js/vendor/supabase.js',
+  'js/vendor/buffer.js',
+  'js/vendor/process.js',
+  'js/vendor/events.js',
+  'js/vendor/tty.js',
+  'js/vendor/async_hooks.js',
 ];
 
 self.addEventListener('install', (e) => {
@@ -34,6 +43,46 @@ self.addEventListener('activate', (e) => {
     caches.keys()
       .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
+  );
+});
+
+// ---------------------------------------------------------- notifiche push
+//
+// Il messaggio arriva cifrato dal servizio push del browser: qui lo apriamo e
+// mostriamo la notifica. userVisibleOnly impone che a ogni messaggio ricevuto
+// corrisponda una notifica visibile, quindi non c'è modo (né intenzione) di
+// usarle per far girare codice di nascosto.
+self.addEventListener('push', (e) => {
+  let dati = {};
+  try {
+    dati = e.data ? e.data.json() : {};
+  } catch (err) {
+    dati = { titolo: 'Beeppy', testo: e.data ? e.data.text() : '' };
+  }
+  const titolo = dati.titolo || 'Beeppy';
+  const opzioni = {
+    body: dati.testo || '',
+    icon: 'assets/icon-192.png',
+    badge: 'assets/icon-192.png',
+    tag: dati.tipo || 'beeppy',      // una notifica per tipo: non si accumulano
+    renotify: true,
+    data: { url: dati.url || './' },
+  };
+  e.waitUntil(self.registration.showNotification(titolo, opzioni));
+});
+
+// Toccando la notifica: se il gioco è già aperto lo si porta in primo piano,
+// altrimenti lo si apre. Aprire una seconda copia sarebbe fastidioso.
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || './';
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((finestre) => {
+      for (const f of finestre) {
+        if (f.url.includes(self.registration.scope) && 'focus' in f) return f.focus();
+      }
+      return self.clients.openWindow(url);
+    })
   );
 });
 

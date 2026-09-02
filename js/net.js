@@ -22,6 +22,7 @@ const SIGNUP_MIN_FILL_MS = 2500; // un umano non compila due campi in meno di 2,
 
 export const state = {
   avatarAt: null,
+  senzaRete: false,
   online: ONLINE,
   connected: false,
   user: null,       // { id, nickname }
@@ -160,9 +161,9 @@ let sbPromise = null;
 function client() {
   if (!sbPromise) {
     sbPromise = (async () => {
-      // @2 e non una versione fissata: le chiavi pubbliche nuove
-      // (sb_publishable_...) hanno bisogno di un client recente.
-      const mod = await import('https://esm.sh/@supabase/supabase-js@2');
+      // Copia locale, non CDN: senza rete il gioco deve poter almeno leggere
+      // la sessione salvata, e un CDN lento non deve bloccare l'accesso.
+      const mod = await import('./vendor/supabase.js');
       return mod.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
       });
@@ -197,6 +198,28 @@ function human(err) {
   return m;
 }
 
+// Legge la sessione dal deposito del browser senza chiedere niente alla rete.
+// Serve quando la connessione manca: Supabase la tiene lì, e conoscere chi sei
+// basta per lasciarti giocare — il punteggio lo si manderà quando torna la rete.
+function sessioneSalvata() {
+  try {
+    const chiave = Object.keys(localStorage)
+      .find((k) => k.startsWith('sb-') && k.endsWith('-auth-token'));
+    if (!chiave) return null;
+    const v = JSON.parse(localStorage.getItem(chiave));
+    const u = v && (v.user || (v.currentSession && v.currentSession.user));
+    return u && u.id ? { id: u.id } : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function erroreDiRete(e) {
+  const m = String((e && e.message) || e).toLowerCase();
+  return !navigator.onLine || m.includes('failed to fetch') ||
+         m.includes('networkerror') || m.includes('load failed');
+}
+
 let initPromise = null;
 
 // Ripristina l'eventuale sessione salvata. Non lancia mai: al massimo resta offline.
@@ -220,14 +243,21 @@ async function doInit() {
     state.connected = true;
     const { data, error } = await c.auth.getSession();
     if (error) {
-      // token di rinnovo non più valido: si riparte da utente non collegato
-      await signOut();
+      // Distinzione che conta: un token non più valido è un motivo per uscire,
+      // una connessione assente no. Buttare fuori chi è semplicemente offline
+      // sarebbe punirlo per il treno in galleria.
+      if (erroreDiRete(error)) {
+        entraOffline();
+      } else {
+        await signOut();
+      }
     } else if (data && data.session) {
       await loadProfile(data.session.user.id);
     }
   } catch (e) {
     state.online = false;
     state.lastError = human(e);
+    if (erroreDiRete(e)) entraOffline();
   }
   return state;
 }
@@ -247,6 +277,19 @@ async function leggiProfilo(c, userId) {
   return r;
 }
 
+// Ripristina l'identità dal deposito locale quando la rete non c'è: chi era
+// entrato resta entrato e può giocare. Senza questo il gioco si comporterebbe
+// come se non ti fossi mai registrato, che è la cosa più irritante possibile
+// da parte di un'app installata sul telefono.
+function entraOffline() {
+  const salvata = sessioneSalvata();
+  if (!salvata) return false;
+  state.user = { id: salvata.id, nickname: localNick() || 'tu' };
+  state.senzaRete = true;
+  state.best = localBest();
+  return true;
+}
+
 async function loadProfile(userId) {
   const c = await client();
   // maybeSingle e non single: quando la riga non c'è, single risponde 406 e
@@ -261,6 +304,12 @@ async function loadProfile(userId) {
   // ripartire da zero che restare con un utente fantasma, che sembrerebbe
   // collegato ma non potrebbe inviare nessun punteggio.
   if (!prof) {
+    // Se la rete manca non possiamo sapere se il profilo esista: si resta
+    // collegati con quello che abbiamo in locale invece di uscire.
+    if (!navigator.onLine) {
+      entraOffline();
+      return state.user;
+    }
     await signOut();
     return null;
   }
@@ -421,6 +470,40 @@ export async function mancaEmail() {
   const r = await miContatti();
   if (!r.ok) return false;              // non lo sappiamo: si gioca
   return !r.dati || !r.dati.email;
+}
+
+// ------------------------------------------------------ iscrizioni push
+
+export async function salvaIscrizionePush(sub) {
+  if (!ONLINE || !state.user) return { ok: false, error: 'Non hai fatto l\'accesso.' };
+  try {
+    const c = await client();
+    const { error } = await c.from('push_iscrizioni').upsert({
+      user_id: state.user.id,
+      endpoint: sub.endpoint,
+      p256dh: sub.keys.p256dh,
+      auth: sub.keys.auth,
+      ultimo_uso: new Date().toISOString(),
+    }, { onConflict: 'endpoint' });
+    if (error) throw error;
+    return { ok: true };
+  } catch (e) {
+    const m = String((e && e.message) || e).toLowerCase();
+    if (m.includes('does not exist') || m.includes('could not find'))
+      return { ok: false, error: 'Notifiche non ancora installate sul database.' };
+    return { ok: false, error: human(e) };
+  }
+}
+
+export async function rimuoviIscrizionePush(endpoint) {
+  if (!ONLINE || !state.user) return { ok: true };
+  try {
+    const c = await client();
+    await c.from('push_iscrizioni').delete().eq('endpoint', endpoint);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: human(e) };
+  }
 }
 
 // ------------------------------------------------------------ foto profilo

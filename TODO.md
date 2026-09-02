@@ -112,6 +112,14 @@ Ordinate per urgenza: la P0 blocca l'invito agli amici, il resto no.
       compilazione e attesa che cresce con i tentativi falliti (0, 0, 0, 5s, 15s,
       45s…). La difesa vera restano i limiti per IP di Supabase Auth.
 
+- [x] ~~Notifiche push~~ — fatte lato telefono e lato invio. Restano da generare
+      le chiavi (`npm run chiavi-push`) e da incollare i segreti su GitHub: vedi
+      [NOTIFICHE.md](NOTIFICHE.md).
+- [x] ~~Si poteva giocare offline?~~ No, e ora sì. Il client Supabase arrivava da
+      un CDN a ogni avvio: senza rete l'accesso non esisteva nemmeno per chi
+      aveva la sessione salvata. Ora la copia sta in `js/vendor/`, e una
+      connessione assente non fa più uscire nessuno.
+
 ## P1 — prodotto
 
 ### Scheda profilo più ricca

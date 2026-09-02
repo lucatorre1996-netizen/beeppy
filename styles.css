@@ -677,3 +677,16 @@ code {
   width: 28px; height: 28px; border-radius: 9px; object-fit: cover;
   margin-right: -2px; vertical-align: -8px;
 }
+
+/* --------------------------------------------------- invito alle notifiche */
+.invito {
+  margin: 4px 0 12px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(255, 197, 66, 0.2);
+  box-shadow: inset 0 0 0 2px rgba(255, 197, 66, 0.5);
+}
+.invito p { margin: 0 0 10px; font-size: 15px; font-weight: 700; line-height: 1.35; }
+.invito-azioni { display: flex; flex-direction: column; gap: 6px; }
+.invito-azioni .btn { width: 100%; min-height: 46px; font-size: 17px; }
+.invito-azioni .btn-ghost { min-height: 36px; font-size: 14px; }
