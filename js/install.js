@@ -104,6 +104,86 @@ function shareIcon() {
     '<path d="M5 12v7h14v-7h-2v5H7v-5H5z" fill="currentColor"/></svg>';
 }
 
+// ------------------------------------------------- installazione obbligatoria
+//
+// Le procedure sono diverse e nessuna vale per tutti, quindi la schermata si
+// adatta a chi la guarda. Il caso che conta di più è il browser interno di
+// WhatsApp o Instagram: da lì non si può installare niente, e senza istruzioni
+// giuste una persona resta bloccata senza capire perché.
+function dentroAltraApp() {
+  return /FBAN|FBAV|Instagram|Line|Twitter|LinkedIn|WhatsApp|Snapchat/i.test(navigator.userAgent);
+}
+
+const ICONA_CONDIVIDI =
+  '<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">' +
+  '<path d="M12 3l4 4h-3v8h-2V7H8l4-4z" fill="currentColor"/>' +
+  '<path d="M5 12v7h14v-7h-2v5H7v-5H5z" fill="currentColor"/></svg>';
+const ICONA_MENU =
+  '<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">' +
+  '<circle cx="12" cy="5" r="1.9" fill="currentColor"/>' +
+  '<circle cx="12" cy="12" r="1.9" fill="currentColor"/>' +
+  '<circle cx="12" cy="19" r="1.9" fill="currentColor"/></svg>';
+
+// Riempie la schermata con le istruzioni giuste. Ritorna true se ha trovato un
+// percorso praticabile, false se da questo browser non si può proprio installare.
+export function preparaSchermataInstallazione() {
+  const passi = document.getElementById('install-istruzioni');
+  const bottone = document.getElementById('install-ora');
+  const copia = document.getElementById('install-copia');
+  const nota = document.getElementById('install-nota');
+  if (!passi) return true;
+
+  bottone.classList.add('hidden');
+  copia.classList.add('hidden');
+  nota.textContent = '';
+
+  // Caso peggiore: browser dentro un'altra app, dove non esiste nessuna voce
+  // per aggiungere alla schermata Home.
+  if (dentroAltraApp()) {
+    passi.innerHTML =
+      '<li>Tocca il menu ' + ICONA_MENU + ' in alto a destra</li>' +
+      '<li>Scegli <b>Apri nel browser</b> (Safari su iPhone, Chrome su Android)</li>' +
+      '<li>Da lì potrai aggiungere Beeppy alla schermata Home</li>';
+    copia.classList.remove('hidden');
+    nota.textContent = 'Stai usando il browser interno di un\'altra app: da qui l\'installazione non è possibile.';
+    return false;
+  }
+
+  if (isIOS()) {
+    passi.innerHTML =
+      '<li>Tocca <b>Condividi</b> ' + ICONA_CONDIVIDI + ' nella barra in basso</li>' +
+      '<li>Scorri e scegli <b>Aggiungi alla schermata Home</b></li>' +
+      '<li>Apri Beeppy dall\'icona appena comparsa</li>';
+    nota.textContent = 'Su iPhone serve Safari: è l\'unico browser che può farlo.';
+    return true;
+  }
+
+  // Android e desktop: se il browser ce lo permette, un pulsante vero
+  if (promptDisponibile()) {
+    passi.innerHTML = '<li>Tocca <b>Installa ora</b> e conferma</li>';
+    bottone.classList.remove('hidden');
+    return true;
+  }
+  passi.innerHTML =
+    '<li>Apri il menu ' + ICONA_MENU + ' del browser</li>' +
+    '<li>Scegli <b>Installa app</b> oppure <b>Aggiungi a schermata Home</b></li>';
+  nota.textContent = 'Se non trovi la voce, prova ad aprire Beeppy con Chrome.';
+  return true;
+}
+
+export function promptDisponibile() {
+  return Boolean(deferredPrompt);
+}
+
+export async function chiediInstallazione() {
+  if (!deferredPrompt) return false;
+  const p = deferredPrompt;
+  deferredPrompt = null;
+  p.prompt();
+  const scelta = await p.userChoice;
+  return scelta && scelta.outcome === 'accepted';
+}
+
 // Va chiamata quando si torna al menu: mostra l'invito solo a chi ha già
 // giocato almeno una volta, non lo ha rifiutato e non ha già installato.
 export function maybeShowInstallHint() {

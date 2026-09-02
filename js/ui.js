@@ -1,6 +1,7 @@
 import * as net from './net.js';
 import { setMuted } from './audio.js';
-import { initInstall, maybeShowInstallHint, markPlayed } from './install.js';
+import { initInstall, maybeShowInstallHint, markPlayed, isStandalone,
+         preparaSchermataInstallazione, chiediInstallazione, promptDisponibile } from './install.js';
 import * as bio from './biometric.js';
 import { drawBee } from './render.js';
 
@@ -33,6 +34,24 @@ export function initUI(g) {
       else if (game.phase === 'menu') startGame();
       else if (game.phase === 'over') startGame();
     }
+  });
+
+  $('install-ora').addEventListener('click', async () => {
+    const b = $('install-ora');
+    b.disabled = true;
+    const messa = await chiediInstallazione();
+    b.disabled = false;
+    if (!messa) preparaSchermataInstallazione();
+  });
+  $('install-copia').addEventListener('click', async () => {
+    const b = $('install-copia');
+    try {
+      await navigator.clipboard.writeText(location.origin + location.pathname);
+      b.textContent = 'Link copiato: incollalo nel browser';
+    } catch (e) {
+      b.textContent = location.host;
+    }
+    setTimeout(() => { b.textContent = 'Copia il link'; }, 3000);
   });
 
   $('btn-play').addEventListener('click', startGame);
@@ -128,6 +147,7 @@ export function initUI(g) {
 
   initInstall();
   mostraAnnuncio();
+  controllaInstallazione();
   syncAccountChip();
   syncLoginNote();
   showScreen('menu');
@@ -156,7 +176,7 @@ async function startGame() {
 }
 
 export function showScreen(name) {
-  for (const id of ['screen-menu', 'screen-ready', 'screen-over']) {
+  for (const id of ['screen-menu', 'screen-ready', 'screen-over', 'screen-install']) {
     $(id).classList.toggle('is-on', id === `screen-${name}`);
   }
   // mentre si vola i pulsanti in alto si spostano di mezzo: un tap accidentale
@@ -482,6 +502,33 @@ function giaConosciuto() {
 
 function modoPredefinito() {
   return giaConosciuto() ? 'login' : 'signup';
+}
+
+// Se l'amministratore ha acceso l'obbligo di installazione e il gioco non è
+// aperto dalla schermata Home, si mostra la procedura al posto del menu.
+//
+// Regola importante: in caso di dubbio si LASCIA GIOCARE. Se la lettura della
+// configurazione fallisce (rete assente, database in pausa) nessuno deve
+// ritrovarsi chiuso fuori da un gioco per un problema che non lo riguarda.
+async function controllaInstallazione() {
+  if (isStandalone()) return;
+  let cfg;
+  try {
+    cfg = await net.leggiConfig();
+  } catch (e) {
+    return; // in dubbio, si gioca
+  }
+  if ((cfg.richiedi_installazione || 'no') !== 'si') return;
+
+  preparaSchermataInstallazione();
+  showScreen('install');
+
+  // se il browser annuncia la possibilità di installare mentre la schermata è
+  // già aperta, il pulsante compare senza dover ricaricare
+  window.addEventListener('beforeinstallprompt', () => {
+    if ($('screen-install').classList.contains('is-on')) preparaSchermataInstallazione();
+  });
+  window.addEventListener('appinstalled', () => location.reload());
 }
 
 // L'annuncio lo scrive l'amministratore dalla sua pagina, e compare nel menu

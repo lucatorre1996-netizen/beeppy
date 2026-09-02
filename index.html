@@ -109,6 +109,24 @@
     </div>
   </section>
 
+  <!-- Schermata di installazione obbligatoria. Compare solo se l'amministratore
+       ha acceso l'interruttore e il gioco non è già aperto dalla schermata Home.
+       Le istruzioni cambiano da sole secondo il dispositivo: non esiste una
+       procedura sola che vada bene per tutti. -->
+  <section id="screen-install" class="screen">
+    <span class="logo-bee" aria-hidden="true"></span>
+    <h2 class="install-titolo">Beeppy si gioca dalla schermata Home</h2>
+    <p class="install-perche">Installalo una volta: si apre a schermo pieno, senza le
+       barre del browser, e funziona anche senza connessione.</p>
+
+    <div class="install-passi">
+      <ol id="install-istruzioni"></ol>
+      <button id="install-ora" class="btn btn-primary hidden" type="button">Installa ora</button>
+      <button id="install-copia" class="btn hidden" type="button">Copia il link</button>
+    </div>
+    <p id="install-nota" class="note"></p>
+  </section>
+
   <!-- invito a installare l'app (iOS non offre nessun prompt automatico) -->
   <div id="install-hint" class="install-hint hidden">
     <div class="install-body">
@@ -296,7 +314,7 @@
 // JavaScript vecchio.
 (function () {
   var avviato = false;
-  var V = '4';  // stessa versione della import map qui sopra
+  var V = '5';  // stessa versione della import map qui sopra
   var codice = ['index.html', 'styles.css'].concat(
     ['main','game','sim','render','palette','constants','audio','ui','net','rng','config','install','biometric']
       .map(function (m) { return 'js/' + m + '.js?v=' + V; }));
@@ -355,22 +373,22 @@
 <script type="importmap">
 {
   "imports": {
-      "./js/main.js": "./js/main.js?v=4",
-      "./js/game.js": "./js/game.js?v=4",
-      "./js/sim.js": "./js/sim.js?v=4",
-      "./js/render.js": "./js/render.js?v=4",
-      "./js/palette.js": "./js/palette.js?v=4",
-      "./js/constants.js": "./js/constants.js?v=4",
-      "./js/audio.js": "./js/audio.js?v=4",
-      "./js/ui.js": "./js/ui.js?v=4",
-      "./js/net.js": "./js/net.js?v=4",
-      "./js/rng.js": "./js/rng.js?v=4",
-      "./js/config.js": "./js/config.js?v=4",
-      "./js/install.js": "./js/install.js?v=4",
-      "./js/biometric.js": "./js/biometric.js?v=4"
+      "./js/main.js": "./js/main.js?v=5",
+      "./js/game.js": "./js/game.js?v=5",
+      "./js/sim.js": "./js/sim.js?v=5",
+      "./js/render.js": "./js/render.js?v=5",
+      "./js/palette.js": "./js/palette.js?v=5",
+      "./js/constants.js": "./js/constants.js?v=5",
+      "./js/audio.js": "./js/audio.js?v=5",
+      "./js/ui.js": "./js/ui.js?v=5",
+      "./js/net.js": "./js/net.js?v=5",
+      "./js/rng.js": "./js/rng.js?v=5",
+      "./js/config.js": "./js/config.js?v=5",
+      "./js/install.js": "./js/install.js?v=5",
+      "./js/biometric.js": "./js/biometric.js?v=5"
   }
 }
 </script>
-<script type="module" src="js/main.js?v=4"></script>
+<script type="module" src="js/main.js?v=5"></script>
 </body>
 </html>

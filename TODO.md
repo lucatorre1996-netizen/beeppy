@@ -69,6 +69,17 @@ Ordinate per urgenza: la P0 blocca l'invito agli amici, il resto no.
       ogni funzione ricontrolla da sé chi la chiama, e l'interruttore delle
       registrazioni è applicato dal trigger, non dall'interfaccia.
 
+- [x] ~~Obbligo di installazione come app~~ — fatto, ma come **interruttore
+      nella pagina admin** (spento per default), non come scelta scolpita nel
+      codice: è la modifica che può costare più giocatori, e va provata potendo
+      tornare indietro in dieci secondi. La schermata mostra procedure diverse per
+      iPhone, Android e — caso decisivo — per il **browser interno di WhatsApp o
+      Instagram**, da cui non si può installare nulla: lì dà le istruzioni per
+      aprire il link nel browser vero e un pulsante che copia l'indirizzo, invece
+      di un vicolo cieco. In caso di dubbio (configurazione illeggibile, rete
+      assente) si lascia giocare: nessuno deve restare chiuso fuori per un
+      problema che non lo riguarda.
+
 ## P1 — prodotto
 
 ### Scheda profilo più ricca

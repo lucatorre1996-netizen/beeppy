@@ -129,6 +129,7 @@ async function aggiorna() {
   for (const r of (cfg.data || [])) conf[r.chiave] = r.valore;
   $('annuncio').value = conf.annuncio || '';
   $('registrazioni').checked = (conf.registrazioni_aperte || 'si') === 'si';
+  $('obbliga-installazione').checked = (conf.richiedi_installazione || 'no') === 'si';
 
   const righe = gio.data || [];
   $('lista').innerHTML = righe.length ? righe.map((r) => `
@@ -196,9 +197,13 @@ async function salvaConfig() {
     p_chiave: 'registrazioni_aperte',
     p_valore: $('registrazioni').checked ? 'si' : 'no',
   });
+  const i = await c.rpc('admin_set_config', {
+    p_chiave: 'richiedi_installazione',
+    p_valore: $('obbliga-installazione').checked ? 'si' : 'no',
+  });
   b.disabled = false;
   b.textContent = 'Salva';
-  const err = a.error || r.error;
+  const err = a.error || r.error || i.error;
   esito(err ? err.message : 'Configurazione salvata.', Boolean(err));
 }
 

@@ -84,7 +84,12 @@ create policy "configurazione leggibile da tutti"
 
 insert into public.app_config (chiave, valore) values
   ('annuncio', ''),
-  ('registrazioni_aperte', 'si')
+  ('registrazioni_aperte', 'si'),
+  -- 'si' obbliga ad aggiungere il gioco alla schermata Home per giocare.
+  -- Sta qui e non nel codice perché è una decisione da provare e poter
+  -- disfare in dieci secondi: chi arriva dal browser interno di WhatsApp non
+  -- può installare niente, e un blocco rigido lo perderesti per sempre.
+  ('richiedi_installazione', 'no')
 on conflict (chiave) do nothing;
 
 
@@ -516,7 +521,7 @@ begin
   if not public.is_admin() then
     raise exception 'non autorizzato';
   end if;
-  if p_chiave not in ('annuncio', 'registrazioni_aperte') then
+  if p_chiave not in ('annuncio', 'registrazioni_aperte', 'richiedi_installazione') then
     raise exception 'chiave non ammessa';
   end if;
   if char_length(coalesce(p_valore, '')) > 200 then
