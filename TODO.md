@@ -199,4 +199,8 @@ Appunti da rileggere prima di dare la colpa al codice.
 
 ## Piccolezze
 
+- [ ] La scheda profilo è diventata lunga (991 px di contenuto): ora scorre, ma
+      varrebbe la pena dividerla, per esempio con i dati personali dietro un
+      "Modifica" invece che sempre aperti.
+
 - [x] ~~Il messaggio d'errore non azzerato dopo una registrazione riuscita~~ — fatto.

@@ -300,6 +300,21 @@ code {
 }
 @keyframes rise { from { transform: translateY(26px); } to { transform: translateY(0); } }
 
+/* I pannelli dentro una modale devono scorrere, non sbordare.
+   La scheda ha max-height: 88% ed è un contenitore flex: senza min-height: 0
+   i figli si rifiutano di rimpicciolirsi sotto la propria altezza naturale — è
+   il classico inciampo dei layout flex — e il contenuto finisce fuori dallo
+   schermo senza modo di raggiungerlo. Il profilo è arrivato a 991 px di
+   altezza su schermi da 812: il pulsante per cancellare l'account era
+   inaccessibile. */
+#auth-forms, #auth-logged, #auth-recupero, #auth-codice, #auth-nobackend {
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;   /* lo scorrimento non si propaga alla pagina */
+}
+.modal-card header { flex: 0 0 auto; }
+
 .modal-card header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .modal-card h2 { margin: 0; font-size: 22px; font-weight: 800; }
 .x {
