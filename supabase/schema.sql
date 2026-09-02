@@ -44,6 +44,29 @@ create policy "punteggi leggibili da tutti"
   on public.scores for select using (true);
 -- nessuna policy di insert/update/delete: si scrive solo via submit_score()
 
+-- ------------------------------------------------ storico delle partite
+--  Serve alla scheda profilo: senza, il profilo mostra solo totali; con, mostra
+--  l'andamento. Ogni riga è una partita accettata (quelle scartate dai controlli
+--  di plausibilità non entrano: lo storico deve raccontare partite vere).
+create table if not exists public.games (
+  id          bigserial primary key,
+  user_id     uuid not null references auth.users on delete cascade,
+  score       int  not null check (score >= 0 and score <= 10000),
+  duration_ms int  not null,
+  flaps       int  not null,
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists games_user_idx on public.games (user_id, created_at desc);
+
+alter table public.games enable row level security;
+
+drop policy if exists "ognuno vede le proprie partite" on public.games;
+create policy "ognuno vede le proprie partite"
+  on public.games for select using (auth.uid() = user_id);
+-- nessuna policy di scrittura: le righe le mette submit_score()
+
+
 -- ------------------------------------------------- nickname: filtro anti-spam
 --  La classifica è pubblica, quindi il nickname è il posto dove arriva lo spam
 --  (link, nomi commerciali, finti account ufficiali). Questa funzione è la
@@ -199,6 +222,12 @@ begin
          updated_at   = case when p_score > best_score then now() else updated_at end
    where user_id = v_user;
 
+  -- storico: solo le partite accettate, così racconta partite vere.
+  -- L'inserimento sta qui e non in una policy perché la tabella games non ha
+  -- policy di scrittura: l'unica via per entrarci è passare da questi controlli.
+  insert into public.games (user_id, score, duration_ms, flaps)
+  values (v_user, p_score, p_duration_ms, least(p_flaps, 100000));
+
   return query select greatest(v_old, p_score), (p_score > v_old), 'ok';
 end;
 $$;
@@ -240,3 +269,97 @@ $$;
 
 revoke execute on function public.delete_my_account() from anon, public;
 grant  execute on function public.delete_my_account() to authenticated;
+
+-- --------------------------------------------- recupero del PIN dimenticato
+--  Senza email non esiste il classico "ti mandiamo un link". La soluzione è un
+--  codice di recupero mostrato una volta sola alla registrazione: chi lo
+--  conserva può rimettere il PIN, chi lo perde no. Meglio di niente, che è
+--  quello che c'era prima.
+--
+--  Del codice il database conserva solo l'impronta SHA-256, mai il codice in
+--  chiaro: se qualcuno leggesse la tabella non potrebbe usarlo.
+alter table public.profiles add column if not exists recovery_hash text;
+alter table public.profiles add column if not exists recovery_fails int not null default 0;
+alter table public.profiles add column if not exists recovery_locked_until timestamptz;
+
+-- Il codice lo imposta il proprietario, una volta, alla registrazione.
+create or replace function public.set_recovery_code(p_hash text)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'utente non autenticato';
+  end if;
+  if p_hash is null or char_length(p_hash) <> 64 then
+    raise exception 'impronta non valida';
+  end if;
+  update public.profiles set recovery_hash = p_hash where id = auth.uid();
+end;
+$$;
+
+revoke execute on function public.set_recovery_code(text) from anon, public;
+grant  execute on function public.set_recovery_code(text) to authenticated;
+
+--  Rimette il PIN a chi presenta nickname e codice giusti. Deve poter essere
+--  chiamata da chi NON è autenticato (è tutto il punto), quindi ha tre freni:
+--  l'impronta del codice deve combaciare, cinque tentativi sbagliati bloccano
+--  il nickname per un'ora, e non rivela mai se un nickname esista o no.
+create or replace function public.reset_pin_with_code(
+  p_nick      text,
+  p_code_hash text,
+  p_password  text
+)
+returns text
+language plpgsql
+security definer set search_path = public, extensions, auth
+as $$
+declare
+  v_id     uuid;
+  v_hash   text;
+  v_fails  int;
+  v_locked timestamptz;
+begin
+  select id, recovery_hash, recovery_fails, recovery_locked_until
+    into v_id, v_hash, v_fails, v_locked
+    from public.profiles where lower(nickname) = lower(p_nick);
+
+  -- nickname inesistente: stessa risposta di codice sbagliato, per non
+  -- permettere di scoprire quali nickname esistono
+  if v_id is null then
+    return 'no';
+  end if;
+
+  if v_locked is not null and v_locked > now() then
+    return 'bloccato';
+  end if;
+
+  if v_hash is null then
+    return 'senza_codice';
+  end if;
+
+  if v_hash <> p_code_hash then
+    update public.profiles
+       set recovery_fails = recovery_fails + 1,
+           recovery_locked_until = case when recovery_fails + 1 >= 5
+                                        then now() + interval '1 hour' else null end
+     where id = v_id;
+    return 'no';
+  end if;
+
+  -- GoTrue conserva le password come hash bcrypt: questo formato lo accetta
+  update auth.users
+     set encrypted_password = extensions.crypt(p_password, extensions.gen_salt('bf', 10))
+   where id = v_id;
+
+  -- il codice è servito: si azzera, così non resta valido per sempre
+  update public.profiles
+     set recovery_hash = null, recovery_fails = 0, recovery_locked_until = null
+   where id = v_id;
+
+  return 'ok';
+end;
+$$;
+
+grant execute on function public.reset_pin_with_code(text, text, text) to anon, authenticated;

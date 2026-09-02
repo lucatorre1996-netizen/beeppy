@@ -8,10 +8,17 @@ Ordinate per urgenza: la P0 blocca l'invito agli amici, il resto no.
 ## P0 — prima di far entrare gente
 
 - [x] ~~Cancellare l'account di collaudo `verifica_prod`~~ — fatto.
-- [ ] **Eseguire il nuovo `supabase/schema.sql`** nel SQL Editor: aggiunge
-      `delete_my_account()`, senza la quale il pulsante "Cancella l'account" nel
-      profilo risponde "Funzione non ancora installata". Rieseguire l'intero file
-      è sicuro: è tutto `create or replace`.
+- [ ] **Eseguire il nuovo `supabase/schema.sql`** nel SQL Editor. Ora serve per
+      quattro cose, non più una: `delete_my_account()`, il codice di recupero
+      (`set_recovery_code` e `reset_pin_with_code`), la tabella `games` dello
+      storico e `submit_score()` che ci scrive dentro. Finché non lo esegui, quelle
+      funzioni rispondono "Funzione non ancora installata" — verificato, falliscono
+      in modo comprensibile e non bloccano il gioco. Rieseguire l'intero file è
+      sicuro: è tutto `create or replace` e `if not exists`.
+- [ ] **Provare il recupero PIN per intero** dopo aver eseguito lo SQL: registrare
+      un account di prova, salvare il codice, uscire, rimettere il PIN col codice.
+      Di questo percorso ho potuto verificare solo interfaccia, generatore di codici
+      e messaggi d'errore: il giro completo richiede le funzioni installate.
 - [ ] **Cancellare `test_profilo`**, l'account con cui ho provato la scheda. Ha
       zero punti, quindi non compare in classifica e non disturba nessuno. Dopo
       aver eseguito lo SQL puoi cancellarlo **dall'app stessa**, che è anche il
@@ -32,6 +39,16 @@ Ordinate per urgenza: la P0 blocca l'invito agli amici, il resto no.
       Nessun servizio esterno, nessun costo. **Attenzione**: GitHub sospende i
       workflow programmati sui repository fermi da 60 giorni.
 
+- [x] ~~Logout poco visibile~~ — era un link sottolineato in fondo alla scheda;
+      ora è un pulsante vero ("Esci dall'account").
+- [x] ~~Informativa privacy~~ — fatta: `privacy.html`, scritta per essere letta,
+      linkata dalla schermata di registrazione.
+- [x] ~~Recupero del PIN dimenticato~~ — fatto con un codice di recupero mostrato
+      una volta alla registrazione. Del codice il server conserva solo l'impronta
+      SHA-256; cinque tentativi sbagliati bloccano il nickname per un'ora, e la
+      risposta è identica per nickname inesistente e codice errato, così non si può
+      scoprire quali nickname esistono.
+
 ## P1 — prodotto
 
 ### Scheda profilo più ricca
@@ -43,12 +60,13 @@ evidenza con la posizione in classifica, partite giocate, battiti d'ali totali,
 distanza percorsa, "nell'alveare dal", otto traguardi che si accendono. Più la
 cancellazione dell'account, con doppia conferma.
 
-**Cosa richiede invece modifiche al database**, da decidere se vale:
+**Cosa richiede invece modifiche al database:**
 
-- [ ] **Storico delle ultime partite** e un grafico dell'andamento → serve una
-      tabella `games` con una riga per partita (punteggio, durata, data), scritta
-      da `submit_score()`, con policy RLS che lascia leggere a ciascuno solo le
-      proprie. È la modifica che dà più valore alla scheda.
+- [x] ~~Storico delle ultime partite e grafico dell'andamento~~ — fatto: tabella
+      `games` scritta solo da `submit_score()` (quindi solo partite superate dai
+      controlli), leggibile da ciascuno solo per le proprie righe. Nella scheda
+      compaiono un grafico a barre delle ultime dieci e l'elenco delle ultime
+      cinque con "3 minuti fa", "ieri". **Va eseguito lo SQL** perché appaia.
 - [ ] **Punteggio medio** → serve una colonna `total_score` in `scores`
       (o si ricava dalla tabella `games`, se la si fa)
 - [ ] **Data del record** → colonna `best_at`, per poter scrivere "record del
@@ -76,8 +94,8 @@ Google 25 $ una tantum, e la review di Apple è il vero ostacolo (linee guida 4.
 - [x] ~~Cancellazione dell'account dall'app~~ — fatta, e senza Edge Function: una
       funzione `security definer` nel database può cancellare da `auth.users`, ma
       solo la riga di chi la chiama. Resta da eseguire lo SQL (vedi P0).
-- [ ] **Informativa privacy** su URL pubblico + questionari App Privacy (Apple) e
-      Data Safety (Google)
+- [x] ~~Informativa privacy su URL pubblico~~ — c'è (`privacy.html`). Restano da
+      compilare i questionari App Privacy (Apple) e Data Safety (Google)
 - [ ] **Consenso GDPR** con una CMP certificata (Google UMP) e prompt **ATT** su iOS
 - [ ] Icone, screenshot per i formati richiesti, feature graphic 1024×500 per Google
 - [ ] Vibrazione al tocco e rispetto dell'interruttore del silenzioso: dettagli che

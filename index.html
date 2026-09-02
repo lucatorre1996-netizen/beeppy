@@ -171,10 +171,14 @@
           </div>
           <p id="auth-error" class="error hidden"></p>
           <button id="auth-submit" class="btn btn-primary" type="submit">Accedi</button>
+          <p class="note">
+             <a href="#" id="link-recupero">PIN dimenticato?</a>
+          </p>
           <p class="note">Serve solo un nickname e un PIN di almeno 4 cifre: nessuna email,
              nessuna verifica. Il nickname è il nome che appare in classifica.
-             <b>Attenzione:</b> senza email il PIN non è recuperabile, quindi scegline uno
-             che ricordi.</p>
+             Dopo la registrazione ti diamo un <b>codice di recupero</b>: conservalo,
+             è l'unico modo per rientrare se dimentichi il PIN.
+             <a href="privacy.html" target="_blank" rel="noopener">Come trattiamo i tuoi dati</a>.</p>
         </form>
       </div>
 
@@ -183,6 +187,35 @@
           non è possibile registrarsi né giocare.</p>
         <p class="note note-big">Chi gestisce il sito deve creare il progetto Supabase
           e inserire le chiavi in <code>js/config.js</code> (istruzioni nel README).</p>
+      </div>
+
+      <!-- il codice di recupero, mostrato una volta sola dopo la registrazione -->
+      <div id="auth-codice" class="hidden">
+        <p class="note note-big">Questo è il tuo <b>codice di recupero</b>. È l'unico
+           modo per rientrare se dimentichi il PIN: scrivilo da qualche parte, non
+           te lo mostreremo più.</p>
+        <div id="codice-valore" class="codice"></div>
+        <button id="btn-copia-codice" class="btn" type="button">Copia il codice</button>
+        <button id="btn-codice-fatto" class="btn btn-primary" type="button">L'ho salvato, si gioca</button>
+      </div>
+
+      <!-- recupero del PIN con il codice -->
+      <div id="auth-recupero" class="hidden">
+        <p class="note note-big">Inserisci il nickname e il codice di recupero che hai
+           salvato quando ti sei registrato, e scegli un PIN nuovo.</p>
+        <form id="recupero-form" autocomplete="off">
+          <label for="r-nick">Nickname</label>
+          <input id="r-nick" type="text" autocapitalize="none" maxlength="16" required>
+          <label for="r-codice">Codice di recupero</label>
+          <input id="r-codice" type="text" autocapitalize="characters"
+                 placeholder="ABCD-EFGH-JKMN-PQRS" maxlength="19" required>
+          <label for="r-pin">Nuovo PIN</label>
+          <input id="r-pin" type="password" inputmode="numeric" pattern="[0-9]*"
+                 minlength="4" maxlength="8" placeholder="4 cifre o più" required>
+          <p id="recupero-errore" class="error hidden"></p>
+          <button id="recupero-submit" class="btn btn-primary" type="submit">Rimetti il PIN</button>
+          <button id="btn-recupero-annulla" class="btn btn-ghost" type="button">Torna indietro</button>
+        </form>
       </div>
 
       <div id="auth-logged" class="hidden">
@@ -208,9 +241,15 @@
 
         <div id="profilo-traguardi" class="traguardi"></div>
 
+        <div id="profilo-storico" class="storico hidden">
+          <span class="stat-k">Ultime partite</span>
+          <div id="storico-grafico" class="storico-grafico"></div>
+          <ul id="storico-lista" class="storico-lista"></ul>
+        </div>
+
         <button id="btn-bio-on" class="btn hidden" type="button">Attiva Face ID</button>
         <p id="bio-note" class="note hidden"></p>
-        <button id="btn-signout" class="btn btn-ghost">Esci</button>
+        <button id="btn-signout" class="btn">Esci dall'account</button>
         <button id="btn-delete" class="btn btn-danger" type="button">Cancella l'account</button>
       </div>
     </div>
@@ -256,7 +295,7 @@
 // JavaScript vecchio.
 (function () {
   var avviato = false;
-  var V = '2';  // stessa versione della import map qui sopra
+  var V = '3';  // stessa versione della import map qui sopra
   var codice = ['index.html', 'styles.css'].concat(
     ['main','game','sim','render','palette','constants','audio','ui','net','rng','config','install','biometric']
       .map(function (m) { return 'js/' + m + '.js?v=' + V; }));
@@ -315,22 +354,22 @@
 <script type="importmap">
 {
   "imports": {
-      "./js/main.js": "./js/main.js?v=2",
-      "./js/game.js": "./js/game.js?v=2",
-      "./js/sim.js": "./js/sim.js?v=2",
-      "./js/render.js": "./js/render.js?v=2",
-      "./js/palette.js": "./js/palette.js?v=2",
-      "./js/constants.js": "./js/constants.js?v=2",
-      "./js/audio.js": "./js/audio.js?v=2",
-      "./js/ui.js": "./js/ui.js?v=2",
-      "./js/net.js": "./js/net.js?v=2",
-      "./js/rng.js": "./js/rng.js?v=2",
-      "./js/config.js": "./js/config.js?v=2",
-      "./js/install.js": "./js/install.js?v=2",
-      "./js/biometric.js": "./js/biometric.js?v=2"
+      "./js/main.js": "./js/main.js?v=3",
+      "./js/game.js": "./js/game.js?v=3",
+      "./js/sim.js": "./js/sim.js?v=3",
+      "./js/render.js": "./js/render.js?v=3",
+      "./js/palette.js": "./js/palette.js?v=3",
+      "./js/constants.js": "./js/constants.js?v=3",
+      "./js/audio.js": "./js/audio.js?v=3",
+      "./js/ui.js": "./js/ui.js?v=3",
+      "./js/net.js": "./js/net.js?v=3",
+      "./js/rng.js": "./js/rng.js?v=3",
+      "./js/config.js": "./js/config.js?v=3",
+      "./js/install.js": "./js/install.js?v=3",
+      "./js/biometric.js": "./js/biometric.js?v=3"
   }
 }
 </script>
-<script type="module" src="js/main.js?v=2"></script>
+<script type="module" src="js/main.js?v=3"></script>
 </body>
 </html>

@@ -12,6 +12,7 @@ let authOpenedAt = 0;      // per misurare quanto ci si mette a compilare
 let volevaGiocare = false; // se l'accesso arriva da un tentativo di giocare
 let ultimoPin = null;      // solo in memoria: serve per attivare la biometria
                            // subito dopo l'accesso, senza richiedere il PIN
+let pannello = 'form';     // form | codice | recupero | profilo | nobackend
 
 export function initUI(g) {
   game = g;
@@ -79,6 +80,32 @@ export function initUI(g) {
   });
 
   $('btn-delete').addEventListener('click', cancellaAccount);
+  $('link-recupero').addEventListener('click', (e) => { e.preventDefault(); mostraRecupero(); });
+  $('btn-recupero-annulla').addEventListener('click', () => { pannello = 'form'; openAuth(); });
+  $('recupero-form').addEventListener('submit', inviaRecupero);
+  $('btn-codice-fatto').addEventListener('click', () => {
+    pannello = 'form';
+    closeModal('modal-auth');
+    dopoAccesso();
+  });
+  $('btn-copia-codice').addEventListener('click', async () => {
+    const b = $('btn-copia-codice');
+    try {
+      await navigator.clipboard.writeText($('codice-valore').textContent);
+      b.textContent = 'Copiato';
+    } catch (e) {
+      b.textContent = 'Selezionalo e copialo a mano';
+    }
+    setTimeout(() => { b.textContent = 'Copia il codice'; }, 2500);
+  });
+  $('r-codice').addEventListener('input', () => {
+    // maiuscole e trattini automatici, così il codice si scrive come si legge
+    const grezzo = $('r-codice').value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16);
+    $('r-codice').value = (grezzo.match(/.{1,4}/g) || []).join('-');
+  });
+  $('r-pin').addEventListener('input', () => {
+    $('r-pin').value = $('r-pin').value.replace(/[^0-9]/g, '').slice(0, net.PIN_MAX);
+  });
   $('btn-bio').addEventListener('click', entraConBiometria);
   $('btn-bio-on').addEventListener('click', attivaBiometria);
 
@@ -238,15 +265,30 @@ function openAuth(titolo, modo) {
   authOpenedAt = Date.now();
   const logged = Boolean(net.state.user);
   const configurato = net.state.online;
-  $('auth-forms').classList.toggle('hidden', logged || !configurato);
-  $('auth-logged').classList.toggle('hidden', !logged);
-  $('auth-nobackend').classList.toggle('hidden', logged || configurato);
+
+  // Un pannello alla volta, scelto qui e in nessun altro posto. La prima
+  // versione lasciava che ogni pannello decidesse da sé se mostrarsi, e il
+  // risultato era il recupero PIN e la scheda profilo visibili insieme.
+  const attivo =
+    pannello === 'codice'   ? 'auth-codice'
+    : pannello === 'recupero' ? 'auth-recupero'
+    : !configurato          ? 'auth-nobackend'
+    : logged                ? 'auth-logged'
+    : 'auth-forms';
+
+  for (const id of ['auth-forms', 'auth-recupero', 'auth-codice', 'auth-logged', 'auth-nobackend']) {
+    $(id).classList.toggle('hidden', id !== attivo);
+  }
   $('auth-error').classList.add('hidden');
-  if (logged) {
+  if (attivo === 'auth-codice') {
+    $('auth-title').textContent = 'Salva questo codice';
+  } else if (attivo === 'auth-recupero') {
+    $('auth-title').textContent = 'PIN dimenticato';
+  } else if (attivo === 'auth-logged') {
     $('auth-title').textContent = 'Il tuo profilo';
     riempiProfilo();
     resetCancellazione();
-  } else if (!configurato) {
+  } else if (attivo === 'auth-nobackend') {
     $('auth-title').textContent = 'Classifica non configurata';
   } else {
     $('auth-title').textContent = titolo || 'Entra in classifica';
@@ -377,9 +419,10 @@ async function submitAuth(e) {
     honeypot: $('f-site').value,
     elapsedMs: Date.now() - authOpenedAt,
   };
-  const out = authMode === 'login'
-    ? await net.signIn(nick, pin)
-    : await net.signUp(nick, pin, guard);
+  const eraRegistrazione = authMode === 'signup';
+  const out = eraRegistrazione
+    ? await net.signUp(nick, pin, guard)
+    : await net.signIn(nick, pin);
 
   btn.disabled = false;
   setAuthMode(authMode);
@@ -404,6 +447,22 @@ async function submitAuth(e) {
   $('f-pass').value = '';
   $('f-site').value = '';
   err.textContent = '';   // altrimenti resta scritto l'errore del tentativo prima
+
+  // Chi si è appena registrato riceve il codice di recupero, una volta sola.
+  // È l'unico momento in cui possiamo darglielo: dopo, sul server c'è solo
+  // la sua impronta.
+  if (eraRegistrazione) {
+    const codice = net.generaCodiceRecupero();
+    const salvato = await net.salvaCodiceRecupero(codice);
+    if (salvato.ok) {
+      $('codice-valore').textContent = codice;
+      pannello = 'codice';
+      openAuth();
+      return;
+    }
+    // se il salvataggio fallisce (funzione non ancora installata) non blocchiamo
+    // l'accesso: si gioca lo stesso, semplicemente senza rete di recupero
+  }
   dopoAccesso();
   // se il punteggio dell'ultima partita non era stato inviato, recuperalo ora
   if (lastResult && lastResult.score > 0) {
@@ -422,6 +481,47 @@ function giaConosciuto() {
 
 function modoPredefinito() {
   return giaConosciuto() ? 'login' : 'signup';
+}
+
+function mostraRecupero() {
+  pannello = 'recupero';
+  $('r-nick').value = $('f-nick').value || net.localNick() || '';
+  $('r-codice').value = '';
+  $('r-pin').value = '';
+  $('recupero-errore').classList.add('hidden');
+  openAuth();
+}
+
+async function inviaRecupero(e) {
+  e.preventDefault();
+  const err = $('recupero-errore');
+  const btn = $('recupero-submit');
+  err.classList.add('hidden');
+  btn.disabled = true;
+  btn.textContent = 'Attendi...';
+
+  const out = await net.recuperaPin($('r-nick').value, $('r-codice').value, $('r-pin').value);
+
+  btn.disabled = false;
+  btn.textContent = 'Rimetti il PIN';
+  if (!out.ok) {
+    err.textContent = out.error;
+    err.classList.remove('hidden');
+    return;
+  }
+  // PIN rimesso: entriamo subito, senza far ridigitare nulla
+  const nick = $('r-nick').value.trim();
+  const pin = $('r-pin').value;
+  const acc = await net.signIn(nick, pin);
+  pannello = 'form';
+  if (!acc.ok) {
+    err.textContent = 'PIN aggiornato, ora accedi con il nuovo PIN.';
+    err.classList.remove('hidden');
+    openAuth();
+    return;
+  }
+  ultimoPin = pin;
+  dopoAccesso();
 }
 
 // Cancellazione dell'account: due passaggi voluti. Il primo click cambia il
@@ -567,6 +667,49 @@ async function riempiProfilo() {
   $('profilo-traguardi').innerHTML = TRAGUARDI
     .map((t) => `<span class="traguardo ${t.ok(st) ? 'preso' : ''}">${t.testo}</span>`)
     .join('');
+
+  riempiStorico(st.record);
+}
+
+// Ultime partite: un grafico a barre e l'elenco. Se la tabella non c'è ancora
+// (SQL non eseguito) la sezione resta semplicemente nascosta.
+async function riempiStorico(record) {
+  const box = $('profilo-storico');
+  const { ok, rows } = await net.myGames(10);
+  if (!ok || !rows.length) {
+    box.classList.add('hidden');
+    return;
+  }
+  box.classList.remove('hidden');
+
+  const cronologiche = rows.slice().reverse(); // dalla più vecchia alla più recente
+  const massimo = Math.max(1, ...cronologiche.map((r) => r.score));
+  $('storico-grafico').innerHTML = cronologiche
+    .map((r) => {
+      const h = Math.max(4, Math.round((r.score / massimo) * 100));
+      const suo = r.score === record && record > 0 ? ' record' : '';
+      return `<div class="storico-barra${suo}" style="height:${h}%" title="${r.score} punti"></div>`;
+    })
+    .join('');
+
+  $('storico-lista').innerHTML = rows
+    .slice(0, 5)
+    .map((r) => `<li><b>${r.score}</b><span class="storico-quando">${quando(r.created_at)}</span></li>`)
+    .join('');
+}
+
+// "3 minuti fa", "ieri", "il 28 agosto": più leggibile di una data intera
+function quando(iso) {
+  const d = new Date(iso);
+  const min = Math.round((Date.now() - d.getTime()) / 60000);
+  if (min < 1) return 'adesso';
+  if (min < 60) return `${min} min fa`;
+  const ore = Math.round(min / 60);
+  if (ore < 24) return `${ore} ${ore === 1 ? 'ora' : 'ore'} fa`;
+  const giorni = Math.round(ore / 24);
+  if (giorni === 1) return 'ieri';
+  if (giorni < 7) return `${giorni} giorni fa`;
+  return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
 }
 
 function dopoAccesso() {

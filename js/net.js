@@ -357,6 +357,92 @@ export async function submitScore(res) {
   }
 }
 
+// --------------------------------------------------- recupero del PIN
+//
+// Senza email non esiste il "ti mandiamo un link". Alla registrazione si genera
+// un codice, lo si mostra una volta sola e se ne salva sul server solo
+// l'impronta: chi lo conserva può rimettere il PIN, chi lo perde no. È poco,
+// ma prima non c'era proprio nulla.
+
+// Niente 0/O/1/I/L: un codice va copiato a mano, e quei caratteri si confondono.
+const ALFABETO = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+
+export function generaCodiceRecupero() {
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  let out = '';
+  for (let i = 0; i < 16; i++) {
+    if (i > 0 && i % 4 === 0) out += '-';
+    out += ALFABETO[b[i] % ALFABETO.length];
+  }
+  return out; // es. ABCD-EFGH-JKMN-PQRS
+}
+
+async function impronta(testo) {
+  const dati = new TextEncoder().encode(testo.trim().toUpperCase());
+  const buf = await crypto.subtle.digest('SHA-256', dati);
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Registra il codice sul proprio account (solo l'impronta viaggia).
+export async function salvaCodiceRecupero(codice) {
+  if (!ONLINE || !state.user) return { ok: false, error: 'Non hai fatto l\'accesso.' };
+  try {
+    const c = await client();
+    const { error } = await c.rpc('set_recovery_code', { p_hash: await impronta(codice) });
+    if (error) throw error;
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: human(e) };
+  }
+}
+
+// Rimette il PIN presentando nickname e codice. Non richiede di essere entrati.
+export async function recuperaPin(nick, codice, nuovoPin) {
+  if (!ONLINE) return { ok: false, error: 'Classifica online non configurata.' };
+  const pinBad = pinProblem(nuovoPin);
+  if (pinBad) return { ok: false, error: pinBad };
+  if (!codice || codice.replace(/[^A-Za-z0-9]/g, '').length < 16)
+    return { ok: false, error: 'Il codice di recupero è di 16 caratteri.' };
+  try {
+    const c = await client();
+    const { data, error } = await c.rpc('reset_pin_with_code', {
+      p_nick: nick.trim(),
+      p_code_hash: await impronta(codice.replace(/[^A-Za-z0-9]/g, '')),
+      p_password: pinToPassword(nuovoPin),
+    });
+    if (error) throw error;
+    if (data === 'ok') return { ok: true };
+    if (data === 'bloccato')
+      return { ok: false, error: 'Troppi tentativi sbagliati: riprova fra un\'ora.' };
+    if (data === 'senza_codice')
+      return { ok: false, error: 'Questo account non ha un codice di recupero.' };
+    return { ok: false, error: 'Nickname o codice di recupero non corretti.' };
+  } catch (e) {
+    const m = String((e && e.message) || e).toLowerCase();
+    if (m.includes('could not find') || m.includes('does not exist'))
+      return { ok: false, error: 'Funzione non ancora installata: esegui supabase/schema.sql aggiornato.' };
+    return { ok: false, error: human(e) };
+  }
+}
+
+// Ultime partite giocate, per lo storico nella scheda profilo.
+export async function myGames(limit = 10) {
+  if (!ONLINE || !state.user) return { ok: false, rows: [] };
+  try {
+    const c = await client();
+    const { data, error } = await c
+      .from('games')
+      .select('score, duration_ms, created_at')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return { ok: true, rows: data || [] };
+  } catch (e) {
+    // la tabella potrebbe non esistere ancora: non è un errore da mostrare
+    return { ok: false, rows: [], error: human(e) };
+  }
+}
+
 // Statistiche per la scheda profilo. Non serve nessuna funzione dedicata sul
 // database: profiles e scores sono leggibili grazie alle policy RLS, e la
 // posizione si ottiene contando quanti hanno fatto meglio — una domanda che

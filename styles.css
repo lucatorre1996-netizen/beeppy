@@ -486,3 +486,59 @@ code {
   text-decoration: none;
   box-shadow: 0 4px 0 #7d1a14;
 }
+
+/* ------------------------------------------ codice di recupero e storico */
+.codice {
+  margin: 14px 0;
+  padding: 16px 12px;
+  border-radius: 16px;
+  background: rgba(43, 33, 24, 0.06);
+  box-shadow: inset 0 0 0 2px rgba(255, 197, 66, 0.6);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-align: center;
+  word-break: break-all;
+  /* qui la selezione serve: il codice va copiato */
+  -webkit-user-select: all;
+  user-select: all;
+}
+#auth-codice .btn, #auth-recupero .btn { width: 100%; margin-top: 8px; }
+#recupero-form { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+#recupero-form label { font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+#recupero-form input {
+  min-height: 50px; margin-bottom: 6px; padding: 0 14px;
+  border: 2px solid var(--panel-line); border-radius: 14px;
+  background: #fff; font: inherit; font-size: 17px; color: var(--ink);
+  -webkit-user-select: text; user-select: text;
+}
+#recupero-form input:focus { outline: none; border-color: var(--honey); }
+#r-codice { font-family: ui-monospace, Menlo, monospace; letter-spacing: 1px; text-transform: uppercase; }
+
+.storico { margin-top: 16px; }
+.storico-grafico {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 56px;
+  margin: 8px 0 10px;
+  padding: 6px 8px;
+  border-radius: 14px;
+  background: rgba(43, 33, 24, 0.05);
+}
+.storico-barra {
+  flex: 1;
+  min-height: 3px;
+  border-radius: 4px 4px 2px 2px;
+  background: linear-gradient(180deg, #ffd569, var(--honey-dark));
+}
+.storico-barra.record { background: linear-gradient(180deg, #8ccf63, #4e9440); }
+.storico-lista { list-style: none; margin: 0; padding: 0; }
+.storico-lista li {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 7px 10px; border-radius: 10px; font-size: 14px; font-weight: 600;
+}
+.storico-lista li:nth-child(odd) { background: rgba(43, 33, 24, 0.04); }
+.storico-lista b { font-size: 16px; font-weight: 800; }
+.storico-quando { color: var(--ink-soft); font-size: 13px; }

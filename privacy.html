@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Beeppy — Privacy</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#3fb0dd">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root { --ink: #2b2118; --soft: #6b6055; --honey: #ffc542; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 32px 20px 64px;
+    background: linear-gradient(180deg, #9adcef, #e8f6fb 380px);
+    color: var(--ink);
+    font-family: 'Baloo 2', system-ui, -apple-system, sans-serif;
+    line-height: 1.55;
+  }
+  main { max-width: 640px; margin: 0 auto; }
+  .card {
+    padding: 26px 24px 30px;
+    border-radius: 24px;
+    background: #fffdf6;
+    box-shadow: 0 12px 34px rgba(23, 16, 8, 0.18);
+  }
+  h1 { margin: 0 0 4px; font-size: 30px; font-weight: 800; }
+  h2 { margin: 28px 0 6px; font-size: 20px; font-weight: 800; }
+  p, li { font-size: 16px; font-weight: 500; }
+  .data { color: var(--soft); font-size: 14px; font-weight: 600; margin: 0 0 18px; }
+  ul { padding-left: 20px; }
+  li { margin-bottom: 6px; }
+  a { color: #b8790a; font-weight: 700; }
+  .torna {
+    display: inline-block; margin-top: 26px; padding: 12px 22px;
+    border-radius: 14px; background: linear-gradient(180deg, #ffd569, var(--honey));
+    box-shadow: 0 4px 0 #e8a01a; color: var(--ink); font-weight: 800;
+    font-size: 17px; text-decoration: none;
+  }
+  .nota { padding: 14px 16px; border-radius: 14px; background: rgba(255,197,66,0.18);
+          box-shadow: inset 0 0 0 2px rgba(255,197,66,0.5); font-size: 15px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <h1>Privacy di Beeppy</h1>
+    <p class="data">Ultimo aggiornamento: 2 settembre 2026</p>
+
+    <p>Beeppy è un gioco. Raccoglie il minimo che serve per far funzionare una
+       classifica condivisa, e nient'altro. Questa pagina dice esattamente cosa,
+       in italiano leggibile.</p>
+
+    <h2>Cosa raccogliamo</h2>
+    <ul>
+      <li><b>Il nickname</b> che scegli. È pubblico: compare in classifica, ed è
+          l'unica cosa che gli altri giocatori vedono di te.</li>
+      <li><b>Il PIN</b>, conservato solo come impronta cifrata. Nessuno — noi
+          compresi — può rileggerlo.</li>
+      <li><b>I tuoi punteggi</b>: record, partite giocate, battiti d'ali, durata
+          delle partite. Servono alla classifica e alla tua scheda profilo.</li>
+      <li><b>L'impronta del codice di recupero</b>, se ne generi uno. Il codice in
+          chiaro non viene mai salvato.</li>
+    </ul>
+
+    <div class="nota">
+      <b>Non chiediamo l'email.</b> Non abbiamo il tuo nome, il tuo numero, la tua
+      posizione, la tua rubrica. Non c'è nessun sistema di tracciamento
+      pubblicitario, nessun cookie di profilazione, nessun pixel di analisi.
+    </div>
+
+    <h2>Dove stanno i dati</h2>
+    <p>Su <a href="https://supabase.com" rel="noopener">Supabase</a>, che ospita il
+       database, e sul server di <a href="https://hostinger.it" rel="noopener">Hostinger</a>
+       che serve le pagine. Il tuo record e alcune preferenze (audio, ultimo
+       nickname usato) restano anche nella memoria del tuo browser, sul tuo
+       dispositivo.</p>
+    <p>Se attivi lo sblocco con Face ID o impronta, il PIN viene conservato
+       <b>sul tuo dispositivo</b> e protetto dalla biometria. Non lascia il
+       telefono.</p>
+
+    <h2>Con chi li condividiamo</h2>
+    <p>Con nessuno. I dati non vengono venduti, ceduti né usati per pubblicità.
+       Le uniche cose visibili agli altri sono il nickname e il punteggio in
+       classifica.</p>
+
+    <h2>Cancellare tutto</h2>
+    <p>Dal gioco: apri il tuo profilo e tocca <b>Cancella l'account</b>. Spariscono
+       account, nickname, punteggi e storico delle partite, subito e
+       definitivamente. Non serve scrivere a nessuno e non c'è nessun periodo di
+       ripensamento.</p>
+
+    <h2>Minori</h2>
+    <p>Beeppy non è rivolto ai bambini sotto i 13 anni e non raccoglie
+       consapevolmente dati di minori di quell'età.</p>
+
+    <h2>Se qualcosa cambia</h2>
+    <p>Se un giorno Beeppy dovesse aggiungere pubblicità o statistiche d'uso,
+       questa pagina verrà aggiornata <b>prima</b> che accada, e la modifica sarà
+       segnalata nel gioco.</p>
+
+    <h2>Contatti</h2>
+    <p>Per qualsiasi domanda o per esercitare i tuoi diritti (accesso, rettifica,
+       cancellazione, portabilità) scrivi a
+       <a href="mailto:beezy@greenimpact.it">beezy@greenimpact.it</a>.</p>
+
+    <a class="torna" href="./">← Torna al gioco</a>
+  </div>
+</main>
+</body>
+</html>
