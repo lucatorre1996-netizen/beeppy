@@ -16,15 +16,11 @@ Ordinate per urgenza: la P0 blocca l'invito agli amici, il resto no.
       zero punti, quindi non compare in classifica e non disturba nessuno. Dopo
       aver eseguito lo SQL puoi cancellarlo **dall'app stessa**, che è anche il
       modo di collaudare la funzione nuova.
-- [ ] **Finire la verifica in produzione.** Confermati sul sito pubblicato: avvio,
+- [x] ~~Verifica in produzione~~ — fatta. Confermati sul sito pubblicato: avvio,
       vincolo dell'account, registrazione con PIN, partita reale da 60 punti in 60
-      secondi con invio del punteggio e posizione #1, difese del form (PIN corto,
-      campo trappola, nickname di spam respinto dal database). **Non ancora
-      verificati**: la modale della classifica, la registrazione del service worker
-      su HTTPS, l'installazione come app.
-- [ ] **Controllare la import map dopo la prossima pubblicazione**: in produzione i
-      moduli devono caricarsi dagli URL con `?v=`. Verificato in locale (tutti e 13,
-      comprese le dipendenze annidate), non ancora sul sito vero.
+      secondi con invio e posizione #1, difese del form, **classifica** (7 giocatori
+      veri, medaglie ai primi tre), **service worker attivo su HTTPS**, **import map
+      funzionante** (tutti e 13 i moduli caricati con `?v=`).
 - [ ] **Provare sull'iPhone vero** tre cose che in un browser da scrivania non si
       possono verificare: il tocco tenuto premuto (non deve più selezionare la
       pagina), l'aggiunta alla schermata Home con la sua schermata di avvio, e lo
