@@ -20,9 +20,14 @@ create unique index if not exists profiles_nickname_lower_idx
 
 alter table public.profiles enable row level security;
 
+-- La classifica è riservata a chi ha un account: nickname e punteggi si leggono
+-- solo dopo l'accesso. Nasconderli nell'interfaccia non basterebbe — con la
+-- chiave pubblica chiunque interrogherebbe le tabelle da fuori — quindi la
+-- chiusura sta qui, dove è l'unica che conta.
 drop policy if exists "profili leggibili da tutti" on public.profiles;
-create policy "profili leggibili da tutti"
-  on public.profiles for select using (true);
+drop policy if exists "profili leggibili da chi ha l'accesso" on public.profiles;
+create policy "profili leggibili da chi ha l'accesso"
+  on public.profiles for select using (auth.uid() is not null);
 
 -- ------------------------------------------------------------------ punteggi
 create table if not exists public.scores (
@@ -40,8 +45,9 @@ create index if not exists scores_best_idx
 alter table public.scores enable row level security;
 
 drop policy if exists "punteggi leggibili da tutti" on public.scores;
-create policy "punteggi leggibili da tutti"
-  on public.scores for select using (true);
+drop policy if exists "punteggi leggibili da chi ha l'accesso" on public.scores;
+create policy "punteggi leggibili da chi ha l'accesso"
+  on public.scores for select using (auth.uid() is not null);
 -- nessuna policy di insert/update/delete: si scrive solo via submit_score()
 
 -- ------------------------------------------------ storico delle partite
@@ -171,7 +177,11 @@ from public.scores s
 join public.profiles p on p.id = s.user_id
 where s.best_score > 0;
 
-grant select on public.leaderboard to anon, authenticated;
+-- Doppia chiusura: la vista ha security_invoker, quindi eredita già le policy
+-- di chi la interroga, ma togliere il permesso agli anonimi rende la cosa
+-- esplicita a chi legge lo schema.
+revoke select on public.leaderboard from anon;
+grant  select on public.leaderboard to authenticated;
 
 -- ------------------------------------- nickname utilizzabile? (pre-controllo)
 --  Ritorna 'ok', 'occupato' oppure 'non_ammesso', così la schermata di
@@ -190,6 +200,9 @@ as $$
   end;
 $$;
 
+-- Questa resta aperta agli anonimi: serve durante la registrazione, cioè
+-- quando un account non c'è ancora. È security definer, quindi non apre le
+-- tabelle: risponde solo "ok", "occupato" o "non_ammesso".
 grant execute on function public.nickname_status(text) to anon, authenticated;
 drop function if exists public.nickname_available(text);
 

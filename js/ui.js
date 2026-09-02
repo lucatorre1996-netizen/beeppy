@@ -239,6 +239,18 @@ async function myPosition() {
 
 // ---------------------------------------------------------------- classifica
 async function openLeaderboard() {
+  await net.whenReady();
+  // La classifica è riservata a chi ha un account. Non è un capriccio
+  // dell'interfaccia: le tabelle sono chiuse agli anonimi, quindi qui possiamo
+  // solo evitare di mostrare un errore al posto di una spiegazione.
+  if (net.state.online && !net.state.user) {
+    volevaGiocare = false;
+    openAuth(giaConosciuto() ? 'Accedi per vedere la classifica'
+                             : 'Registrati per vedere la classifica',
+             modoPredefinito());
+    return;
+  }
+
   openModal('modal-lb');
   const list = $('lb-list');
   const note = $('lb-note');
@@ -799,6 +811,13 @@ function syncLoginNote() {
 }
 
 async function refreshMenu() {
+  // Niente punteggi a chi non ha fatto l'accesso: né il proprio record né il
+  // migliore in assoluto. Il riquadro non resta vuoto, sparisce.
+  const dentro = Boolean(net.state.user) || !net.state.online;
+  const riquadri = document.querySelector('.stats-row');
+  if (riquadri) riquadri.classList.toggle('hidden', !dentro);
+  if (!dentro) return;
+
   $('menu-best').textContent = Math.max(net.state.best, net.localBest());
   if (!net.state.online) {
     $('menu-top').textContent = '-';

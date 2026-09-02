@@ -23,16 +23,20 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Leggi la classifica
+      - name: Interroga il database
         env:
           URL: https://capyfbcjxkjkyeigciqb.supabase.co
           # chiave pubblica: è la stessa che sta nel codice del sito
           KEY: sb_publishable_5_QrCuMpAcg2U9CKayRb2g_dbgRQvdi
         run: |
           set -e
+          # Non la classifica: da quando è riservata agli iscritti, una chiave
+          # anonima non la legge più. Questa funzione invece resta aperta —
+          # serve durante la registrazione — e interrogarla conta come attività.
           codice=$(curl -s -o /tmp/risposta.json -w '%{http_code}' \
-            -H "apikey: $KEY" \
-            "$URL/rest/v1/leaderboard?select=nickname,best_score&limit=1")
+            -X POST -H "apikey: $KEY" -H "Content-Type: application/json" \
+            -d '{"p_nick":"ping"}' \
+            "$URL/rest/v1/rpc/nickname_status")
           echo "HTTP $codice"
           echo "risposta: $(cat /tmp/risposta.json)"
           if [ "$codice" != "200" ]; then
