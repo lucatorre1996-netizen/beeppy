@@ -21,6 +21,7 @@ const SIGNUP_MAX_PER_DAY = 3;
 const SIGNUP_MIN_FILL_MS = 2500; // un umano non compila due campi in meno di 2,5 s
 
 export const state = {
+  avatarAt: null,
   online: ONLINE,
   connected: false,
   user: null,       // { id, nickname }
@@ -229,12 +230,27 @@ async function doInit() {
   return state;
 }
 
+// Chiede le colonne nuove e, se il database non le ha ancora, ripiega su quelle
+// vecchie. Serve perché il codice e lo schema si aggiornano in momenti diversi:
+// senza questo, il giorno della pubblicazione una colonna mancante farebbe
+// fallire la lettura del profilo, e chi accede verrebbe buttato fuori come se
+// la sessione non fosse valida. È già quasi successo.
+async function leggiProfilo(c, userId) {
+  let r = await c.from('profiles').select('nickname, created_at, avatar_at')
+                 .eq('id', userId).maybeSingle();
+  if (r.error) {
+    r = await c.from('profiles').select('nickname, created_at')
+               .eq('id', userId).maybeSingle();
+  }
+  return r;
+}
+
 async function loadProfile(userId) {
   const c = await client();
   // maybeSingle e non single: quando la riga non c'è, single risponde 406 e
   // riempie la console di errori invece di dire semplicemente "nessun profilo".
   const [{ data: prof }, { data: sc }] = await Promise.all([
-    c.from('profiles').select('nickname, created_at').eq('id', userId).maybeSingle(),
+    leggiProfilo(c, userId),
     c.from('scores').select('best_score').eq('user_id', userId).maybeSingle(),
   ]);
 
@@ -248,6 +264,7 @@ async function loadProfile(userId) {
   }
 
   state.user = { id: userId, nickname: prof.nickname };
+  state.avatarAt = prof.avatar_at || null;
   // Per chi è collegato il record è quello del server, non quello locale: il
   // locale è una copia di comodo e può contenere un punteggio che il server ha
   // scartato. Se resta indietro un punteggio guadagnato davvero, è la UI a
@@ -347,6 +364,7 @@ export async function signOut() {
     if (sbPromise) await (await client()).auth.signOut();
   } catch (e) { /* ignora */ }
   state.user = null;
+  state.avatarAt = null;
   state.best = localBest();
 }
 
@@ -389,6 +407,88 @@ export async function submitScore(res) {
     setLocalBest(res.score);
     state.best = Math.max(state.best, res.score);
     return { ok: false, error: human(e), best: state.best, isRecord: eraRecordLocale };
+  }
+}
+
+// ------------------------------------------------------------ foto profilo
+//
+// Il file si chiama <identificativo utente>.jpg e la policy del bucket verifica
+// che il nome combaci con chi carica: nessuno può sovrascrivere la foto di un
+// altro. Il ridimensionamento avviene qui nel browser prima di spedire, così
+// dal telefono non parte una foto da cinque megabyte per mostrarne una da 160
+// pixel.
+
+const AVATAR_LATO = 256;
+
+export function avatarUrl(userId, quando) {
+  if (!userId || !quando) return null;
+  // il momento dell'ultimo cambio fa da versione: senza, il browser
+  // continuerebbe a mostrare la foto vecchia dalla cache
+  const v = new Date(quando).getTime();
+  return `${SUPABASE_URL}/storage/v1/object/public/avatar/${userId}.jpg?v=${v}`;
+}
+
+// Ritaglia al centro, ridimensiona e comprime. Ritorna un Blob JPEG.
+async function preparaImmagine(file) {
+  const bitmap = await createImageBitmap(file);
+  const lato = Math.min(bitmap.width, bitmap.height);
+  const c = document.createElement('canvas');
+  c.width = AVATAR_LATO;
+  c.height = AVATAR_LATO;
+  const x = c.getContext('2d');
+  x.imageSmoothingQuality = 'high';
+  x.drawImage(bitmap,
+    (bitmap.width - lato) / 2, (bitmap.height - lato) / 2, lato, lato,
+    0, 0, AVATAR_LATO, AVATAR_LATO);
+  bitmap.close();
+
+  // scendiamo di qualità finché non stiamo sotto il limite del bucket
+  for (const q of [0.82, 0.7, 0.6, 0.5]) {
+    const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', q));
+    if (blob && blob.size <= 240 * 1024) return blob;
+  }
+  return null;
+}
+
+export async function caricaAvatar(file) {
+  if (!ONLINE || !state.user) return { ok: false, error: 'Non hai fatto l\'accesso.' };
+  if (!file || !/^image\//.test(file.type))
+    return { ok: false, error: 'Scegli un file immagine.' };
+  try {
+    const blob = await preparaImmagine(file);
+    if (!blob) return { ok: false, error: 'Non riesco a ridurre abbastanza questa immagine.' };
+
+    const c = await client();
+    const { error } = await c.storage
+      .from('avatar')
+      .upload(`${state.user.id}.jpg`, blob, { contentType: 'image/jpeg', upsert: true });
+    if (error) throw error;
+
+    const { error: e2 } = await c.rpc('set_avatar', { p_presente: true });
+    if (e2) throw e2;
+    state.avatarAt = new Date().toISOString();
+    return { ok: true, url: avatarUrl(state.user.id, state.avatarAt) };
+  } catch (e) {
+    const m = String((e && e.message) || e).toLowerCase();
+    if (m.includes('bucket not found'))
+      return { ok: false, error: 'Spazio immagini non ancora creato: esegui supabase/schema.sql aggiornato.' };
+    if (m.includes('exceeded') || m.includes('too large'))
+      return { ok: false, error: 'Immagine troppo pesante anche dopo la riduzione.' };
+    return { ok: false, error: human(e) };
+  }
+}
+
+export async function rimuoviAvatar() {
+  if (!ONLINE || !state.user) return { ok: false, error: 'Non hai fatto l\'accesso.' };
+  try {
+    const c = await client();
+    await c.storage.from('avatar').remove([`${state.user.id}.jpg`]);
+    const { error } = await c.rpc('set_avatar', { p_presente: false });
+    if (error) throw error;
+    state.avatarAt = null;
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: human(e) };
   }
 }
 
@@ -546,7 +646,7 @@ export async function myStats() {
     const c = await client();
     const id = state.user.id;
     const [prof, sc, giocatori] = await Promise.all([
-      c.from('profiles').select('nickname, created_at').eq('id', id).maybeSingle(),
+      leggiProfilo(c, id),
       c.from('scores').select('best_score, games_played, total_flaps').eq('user_id', id).maybeSingle(),
       c.from('scores').select('user_id', { count: 'exact', head: true }).gt('best_score', 0),
     ]);
@@ -602,11 +702,19 @@ export async function leaderboard(limit = 50) {
   if (!ONLINE) return { ok: false, error: 'offline', rows: [] };
   try {
     const c = await client();
-    const { data, error } = await c
+    let { data, error } = await c
       .from('leaderboard')
-      .select('pos, nickname, best_score, user_id')
+      .select('pos, nickname, best_score, user_id, avatar_at')
       .order('pos', { ascending: true })
       .limit(limit);
+    if (error) {
+      // vista non ancora aggiornata: la classifica funziona lo stesso, senza foto
+      ({ data, error } = await c
+        .from('leaderboard')
+        .select('pos, nickname, best_score, user_id')
+        .order('pos', { ascending: true })
+        .limit(limit));
+    }
     if (error) throw error;
     return { ok: true, rows: data || [] };
   } catch (e) {

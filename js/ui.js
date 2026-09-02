@@ -103,6 +103,9 @@ export function initUI(g) {
   $('btn-recupero-annulla').addEventListener('click', () => { pannello = 'form'; openAuth(); });
   $('recupero-form').addEventListener('submit', inviaRecupero);
   $('dati-form').addEventListener('submit', salvaDati);
+  $('avatar-scegli').addEventListener('click', () => $('avatar-file').click());
+  $('avatar-file').addEventListener('change', scegliFoto);
+  $('avatar-rimuovi').addEventListener('click', togliFoto);
   $('btn-codice-fatto').addEventListener('click', () => {
     pannello = 'form';
     closeModal('modal-auth');
@@ -276,8 +279,10 @@ async function openLeaderboard() {
     .map((r, i) => {
       const me = net.state.user && r.user_id === net.state.user.id;
       const pos = i < 3 ? medal[i] : r.pos;
+      const foto = net.avatarUrl(r.user_id, r.avatar_at);
+      const img = foto ? `<img class="lb-foto" src="${foto}" alt="" loading="lazy">` : '';
       return `<li class="${me ? 'me' : ''}"><span class="pos">${pos}</span>` +
-             `<span class="nick">${escapeHtml(r.nickname)}</span>` +
+             `<span class="nick">${img}${escapeHtml(r.nickname)}</span>` +
              `<span class="pts">${r.best_score}</span></li>`;
     })
     .join('');
@@ -694,6 +699,45 @@ function disegnaAvatar(nick) {
   drawBee(x, 0, 0, -0.22, 1.4);
 }
 
+// Se c'è una foto si mostra quella, altrimenti resta l'ape disegnata: nessuno
+// deve ritrovarsi con un quadrato vuoto solo perché non ha caricato niente.
+function mostraAvatar() {
+  const nick = net.state.user ? net.state.user.nickname : '';
+  const url = net.state.user ? net.avatarUrl(net.state.user.id, net.state.avatarAt) : null;
+  const foto = $('profilo-foto');
+  const disegno = $('profilo-avatar');
+  if (url) {
+    foto.src = url;
+    foto.classList.remove('hidden');
+    disegno.classList.add('hidden');
+    $('avatar-rimuovi').classList.remove('hidden');
+  } else {
+    foto.classList.add('hidden');
+    disegno.classList.remove('hidden');
+    $('avatar-rimuovi').classList.add('hidden');
+    disegnaAvatar(nick);
+  }
+}
+
+async function scegliFoto(e) {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  const esito = $('dati-esito');
+  esito.textContent = 'Carico la foto...';
+  const out = await net.caricaAvatar(file);
+  esito.textContent = out.ok ? 'Foto aggiornata.' : out.error;
+  if (out.ok) mostraAvatar();
+}
+
+async function togliFoto() {
+  const esito = $('dati-esito');
+  esito.textContent = 'Rimuovo...';
+  const out = await net.rimuoviAvatar();
+  esito.textContent = out.ok ? 'Foto rimossa.' : out.error;
+  mostraAvatar();
+}
+
 function formattaNumero(n) {
   return (n || 0).toLocaleString('it-IT');
 }
@@ -719,7 +763,7 @@ const TRAGUARDI = [
 async function riempiProfilo() {
   const nick = net.state.user ? net.state.user.nickname : '';
   $('auth-nick').textContent = nick;
-  disegnaAvatar(nick);
+  mostraAvatar();
 
   // valori provvisori mentre arrivano i dati veri
   $('auth-best').textContent = net.state.best;

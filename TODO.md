@@ -25,15 +25,17 @@ Ordinate per urgenza: la P0 blocca l'invito agli amici, il resto no.
       La pagina admin ora contiene i valori esatti da inserire e un pulsante che
       manda un'email di prova per verificare se funziona. La password va messa lì
       e non nell'app: nel frontend sarebbe leggibile da chiunque.
-- [ ] **Foto profilo** — richiede Supabase Storage: creare un bucket `avatar`
-      pubblico in lettura con policy di scrittura sul proprio file. Il
-      ridimensionamento si fa nel browser prima di caricare, per non spedire foto
-      da 5 MB. Da valutare la moderazione: un avatar lo vedono tutti in classifica.
-- [ ] **Accesso con Google** — richiede un progetto Google Cloud con credenziali
-      OAuth e la configurazione nel pannello Supabase (Authentication → Providers →
-      Google). Lato gioco serve un passaggio in più: chi entra con Google non ha un
-      nickname, e va chiesto prima di entrare in classifica. Nota per gli store:
-      Apple pretende "Accedi con Apple" da chi offre l'accesso con Google.
+- [x] ~~Foto profilo~~ — fatta. Il bucket si crea da `supabase/schema.sql`, quindi
+      non serve nessun passaggio a mano nel pannello. Il ridimensionamento avviene
+      nel browser (ritaglio quadrato, 256 px, qualità che scende finché non sta
+      sotto i 240 KB): dal telefono non parte una foto da cinque megabyte. La foto
+      compare nel profilo e accanto al nome in classifica; chi non ne carica una
+      tiene l'ape disegnata. **Moderazione**: un amministratore può cancellare
+      l'avatar di chiunque, perché lo vedono tutti.
+- [x] ~~Accesso con Google~~ — **scartato su decisione di Luca** (2 settembre 2026).
+      Non riproporlo come se fosse una dimenticanza. Costava un progetto Google
+      Cloud, la configurazione OAuth, e un passaggio in più nel gioco per chiedere
+      il nickname a chi entra senza averne uno.
 - [ ] **Captcha su registrazione e accesso** — Supabase lo supporta (hCaptcha o
       Turnstile) da Authentication → Settings. **Attenzione**: attivandolo lì, tutti
       i form devono spedire il token, altrimenti nessuno riesce più a entrare. Non

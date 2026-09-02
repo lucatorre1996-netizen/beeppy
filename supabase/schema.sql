@@ -14,6 +14,10 @@ create table if not exists public.profiles (
   created_at timestamptz not null default now()
 );
 
+-- Segna chi ha una foto profilo e quando: la colonna sta qui, con la tabella,
+-- perché la vista della classifica la legge (vedi più sotto).
+alter table public.profiles add column if not exists avatar_at timestamptz;
+
 -- nickname unici senza distinzione fra maiuscole e minuscole
 create unique index if not exists profiles_nickname_lower_idx
   on public.profiles (lower(nickname));
@@ -220,7 +224,8 @@ select
   p.nickname,
   s.best_score,
   s.updated_at,
-  s.user_id
+  s.user_id,
+  p.avatar_at
 from public.scores s
 join public.profiles p on p.id = s.user_id
 where s.best_score > 0;
@@ -643,3 +648,74 @@ $$;
 
 revoke execute on function public.admin_stats() from anon, public;
 grant  execute on function public.admin_stats() to authenticated;
+
+-- =====================================================================
+--  FOTO PROFILO
+--
+--  Il bucket si crea da qui e non dal pannello: così tutta la
+--  configurazione del progetto sta in questo file, e chi lo esegue ottiene
+--  un database completo senza dover ricordare passaggi manuali.
+-- =====================================================================
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('avatar', 'avatar', true, 262144, array['image/jpeg', 'image/webp', 'image/png'])
+on conflict (id) do update
+  set public = true,
+      file_size_limit = 262144,               -- 256 KB: il client ridimensiona prima
+      allowed_mime_types = array['image/jpeg', 'image/webp', 'image/png'];
+
+-- Le foto sono pubbliche in lettura: compaiono in classifica accanto al
+-- nickname, come l'avatar disegnato.
+drop policy if exists "avatar leggibili da tutti" on storage.objects;
+create policy "avatar leggibili da tutti"
+  on storage.objects for select
+  using (bucket_id = 'avatar');
+
+-- Ognuno può scrivere SOLO il file che porta il proprio identificativo: il
+-- nome del file è <user_id>.jpg, e la policy lo verifica. Senza questo
+-- controllo chiunque potrebbe sovrascrivere la foto di un altro.
+drop policy if exists "ognuno carica il proprio avatar" on storage.objects;
+create policy "ognuno carica il proprio avatar"
+  on storage.objects for insert to authenticated
+  with check (
+    bucket_id = 'avatar'
+    and (storage.foldername(name))[1] is null
+    and split_part(name, '.', 1) = auth.uid()::text
+  );
+
+drop policy if exists "ognuno aggiorna il proprio avatar" on storage.objects;
+create policy "ognuno aggiorna il proprio avatar"
+  on storage.objects for update to authenticated
+  using (bucket_id = 'avatar' and split_part(name, '.', 1) = auth.uid()::text);
+
+-- Cancellare: il proprietario, oppure un amministratore (serve per rimuovere
+-- una foto inadatta: la vedono tutti in classifica).
+drop policy if exists "cancella il proprio avatar o da admin" on storage.objects;
+create policy "cancella il proprio avatar o da admin"
+  on storage.objects for delete to authenticated
+  using (
+    bucket_id = 'avatar'
+    and (split_part(name, '.', 1) = auth.uid()::text or public.is_admin())
+  );
+
+-- Segna chi ha una foto e quando: serve a non chiedere immagini inesistenti e
+-- a far aggiornare la copia in cache del browser quando cambia.
+alter table public.profiles add column if not exists avatar_at timestamptz;
+
+create or replace function public.set_avatar(p_presente boolean)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'utente non autenticato';
+  end if;
+  update public.profiles
+     set avatar_at = case when p_presente then now() else null end
+   where id = auth.uid();
+end;
+$$;
+
+revoke execute on function public.set_avatar(boolean) from anon, public;
+grant  execute on function public.set_avatar(boolean) to authenticated;
