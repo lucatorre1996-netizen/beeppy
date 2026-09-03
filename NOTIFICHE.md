@@ -10,7 +10,7 @@ Vengono prima di ogni singola notifica, e servono a non farsi disinstallare:
 
 | regola | valore |
 | --- | --- |
-| Massimo per persona | **una ogni 2 giorni** |
+| Massimo per persona | **una ogni 2 giorni** — con due eccezioni, sotto |
 | Quante per volta | **una sola**, la più utile fra quelle applicabili |
 | Silenzio notturno | **dalle 23 alle 8** non parte niente |
 | Chi sta giocando | chi ha giocato **nelle ultime 6 ore** non viene disturbato |
@@ -25,17 +25,28 @@ più casi, riceve solo il primo.
 
 | # | Quando arriva | Cosa dice |
 | --- | --- | --- |
-| 0 | **Manca l'email**, a chi si è iscritto prima che fosse obbligatoria — una volta sola | *"Aggiungila dal profilo: serve a restituirti l'accesso se dimentichi il PIN."* |
-| 1 | **Qualcuno ti ha superato** in classifica dall'ultimo controllo | *"Pueblo ti ha passato: sei 3° in classifica."* |
+| 0 | **Manca l'email** — **ogni giorno** finché non la inserisce | *"Senza email non puoi giocare. Aggiungila dal profilo: ci vuole un attimo."* |
+| 1 | **Qualcuno ti ha superato** — **sempre**, al massimo una ogni 6 ore | *"Pueblo ti ha passato: sei 3° in classifica."* |
 | 2 | **Non giochi da 3 giorni o più** | *"Sono 3 giorni che non giochi. Ti va una partita?"* — oltre i 14 giorni cambia in *"Sono 20 giorni che non voli. Il tuo record di 50 è ancora lì."* |
 | 3 | **Niente foto profilo**, e hai giocato almeno 5 partite | *"Aggiungi una foto al profilo: comparirà accanto al tuo nome in classifica."* (una volta sola) |
 | 4 | **Lunedì**, se sei in classifica | *"Sei 4° con 50. Regge un'altra settimana?"* |
 
-Perché quest'ordine. L'email viene prima di tutto perché senza di essa il gioco
-si blocca: invitare qualcuno a giocare sapendo che troverà un ostacolo sarebbe
-una presa in giro — e infatti a chi manca l'email non viene mandato nient'altro.
-Poi il sorpasso, che è l'unica notifica che arriva mentre c'è qualcosa da rifare
-*adesso*. Le ultime scendono verso il promemoria di servizio.
+**Le due eccezioni al limite dei due giorni** sono le prime due, e per ragioni
+opposte.
+
+L'**email** perché senza di essa il gioco è bloccato: non è un invito a tornare,
+è l'unica strada per poter giocare. Arriva ogni giorno finché non viene
+inserita, e a chi è in quella condizione non si manda nient'altro — invitarlo a
+giocare sapendo che troverebbe un muro sarebbe una presa in giro.
+
+Il **sorpasso** perché è l'unica notifica che ha un motivo *adesso*: farla
+tacere perché due giorni fa era arrivato un promemoria significherebbe perdere
+l'unica occasione in cui c'era davvero qualcosa da rifare. Ha però un limite
+suo, di sei ore: in una serata movimentata, essere avvisati a ogni scavalcamento
+sarebbe il motivo perfetto per disattivarle tutte.
+
+Le altre scendono verso il promemoria di servizio e rispettano il limite dei due
+giorni.
 
 Le notifiche "una volta sola" (email e foto) si ricordano davvero: la colonna
 `tipi_inviati` tiene l'elenco di quelle già spedite a ciascuno. Guardare solo

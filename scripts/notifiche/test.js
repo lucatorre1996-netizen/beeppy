@@ -8,9 +8,12 @@ const base = { user_id: 'x', iscrizioni: [{}], record: 50, partite: 20, haFoto: 
 
 const casi = [
   ['senza email', { ...base, haEmail: false, ultimaPartita: ADESSO - GIORNO }],
-  ['senza email, già avvisato', { ...base, haEmail: false, tipiInviati: ['email'], ultimaPartita: ADESSO - 9 * GIORNO }],
+  ['senza email, avvisato ieri', { ...base, haEmail: false, ultimaInviata: ADESSO - 25 * 3600 * 1000, ultimaPartita: ADESSO - 9 * GIORNO }],
+  ['senza email, avvisato 2 ore fa', { ...base, haEmail: false, ultimaInviata: ADESSO - 2 * 3600 * 1000, ultimaPartita: ADESSO - 9 * GIORNO }],
   ['senza email ma superato', { ...base, haEmail: false, posizione: 3, posizionePrecedente: 1, superatoDa: 'Pueblo', ultimaPartita: ADESSO - GIORNO }],
   ['foto già sollecitata', { ...base, haFoto: false, partite: 12, tipiInviati: ['profilo'], ultimaPartita: ADESSO - GIORNO }],
+  ['superato, avvisato 2 giorni fa', { ...base, posizione: 3, posizionePrecedente: 2, superatoDa: 'Pueblo', ultimaInviata: ADESSO - 2 * 3600 * 1000, ultimaPartita: ADESSO - GIORNO }],
+  ['superato due volte in 2 ore', { ...base, posizione: 4, posizionePrecedente: 3, superatoDa: 'BeeGee', ultimoSorpasso: ADESSO - 2 * 3600 * 1000, ultimaPartita: ADESSO - GIORNO }],
   ['superato di recente', { ...base, posizione: 3, posizionePrecedente: 2, superatoDa: 'Pueblo', ultimaPartita: ADESSO - GIORNO }],
   ['fermo da 3 giorni', { ...base, ultimaPartita: ADESSO - 3 * GIORNO }],
   ['fermo da 20 giorni', { ...base, ultimaPartita: ADESSO - 20 * GIORNO }],

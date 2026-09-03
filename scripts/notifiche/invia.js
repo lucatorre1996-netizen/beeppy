@@ -83,6 +83,9 @@ async function raccogli() {
       ultimaInviata: s.ultima_inviata ? new Date(s.ultima_inviata).getTime() : null,
       ultimoTipo: s.ultimo_tipo || null,
       tipiInviati: s.tipi_inviati || [],
+      // il sorpasso ha un limite tutto suo: ci serve quando è arrivato l'ultimo
+      ultimoSorpasso: (s.ultimo_tipo === 'superato' && s.ultima_inviata)
+        ? new Date(s.ultima_inviata).getTime() : null,
       haEmail: conEmail.has(p.id),
       iscrizioni: iscrizioni.filter((i) => i.user_id === p.id),
     };
