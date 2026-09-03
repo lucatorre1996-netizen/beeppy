@@ -47,12 +47,14 @@ async function scrivi(percorso, corpo, conflitto) {
 }
 
 async function raccogli() {
-  const [profili, punteggi, iscrizioni, stato] = await Promise.all([
+  const [profili, punteggi, iscrizioni, stato, contatti] = await Promise.all([
     rest('profiles?select=id,nickname,avatar_at'),
     rest('scores?select=user_id,best_score,games_played,last_submit'),
     rest('push_iscrizioni?select=user_id,endpoint,p256dh,auth'),
-    rest('push_stato?select=user_id,posizione,ultima_inviata,ultimo_tipo'),
+    rest('push_stato?select=user_id,posizione,ultima_inviata,ultimo_tipo,tipi_inviati'),
+    rest('contatti?select=user_id,email'),
   ]);
+  const conEmail = new Set(contatti.filter((c) => c.email).map((c) => c.user_id));
 
   const perPunteggio = punteggi.slice().sort((a, b) => b.best_score - a.best_score);
   const posizione = new Map();
@@ -80,6 +82,8 @@ async function raccogli() {
       superatoDa: sopra ? nomi.get(sopra.user_id) : null,
       ultimaInviata: s.ultima_inviata ? new Date(s.ultima_inviata).getTime() : null,
       ultimoTipo: s.ultimo_tipo || null,
+      tipiInviati: s.tipi_inviati || [],
+      haEmail: conEmail.has(p.id),
       iscrizioni: iscrizioni.filter((i) => i.user_id === p.id),
     };
   });
@@ -186,10 +190,13 @@ async function main() {
   const inviati = new Set(
     messaggi.filter((m) => m.tipo !== 'annuncio').map((m) => m.user_id));
   await scrivi('push_stato', giocatori.map((g) => {
-    const s = { user_id: g.user_id, posizione: g.posizione };
+    const s = { user_id: g.user_id, posizione: g.posizione, tipi_inviati: g.tipiInviati };
     if (inviati.has(g.user_id)) {
+      const tipo = (messaggi.find((m) => m.user_id === g.user_id) || {}).tipo;
       s.ultima_inviata = adesso;
-      s.ultimo_tipo = (messaggi.find((m) => m.user_id === g.user_id) || {}).tipo;
+      s.ultimo_tipo = tipo;
+      // memoria per le notifiche da mandare una volta sola
+      if (tipo && !s.tipi_inviati.includes(tipo)) s.tipi_inviati = [...s.tipi_inviati, tipo];
     }
     return s;
   }), true);

@@ -775,8 +775,15 @@ create table if not exists public.push_stato (
   user_id        uuid primary key references auth.users on delete cascade,
   posizione      int,
   ultima_inviata timestamptz,
-  ultimo_tipo    text
+  ultimo_tipo    text,
+  -- Elenco dei tipi già spediti a questa persona. Serve alle notifiche che
+  -- vanno mandate UNA VOLTA SOLA: guardare ultimo_tipo non basta, perché
+  -- viene sovrascritto dalla notifica successiva e quella "una volta sola"
+  -- tornerebbe a partire.
+  tipi_inviati   text[] not null default '{}'
 );
+
+alter table public.push_stato add column if not exists tipi_inviati text[] not null default '{}';
 
 alter table public.push_stato enable row level security;
 -- nessuna policy: ci accede solo chi spedisce, con la chiave di servizio

@@ -12,7 +12,7 @@
 
 const GIORNO = 24 * 3600 * 1000;
 
-export const TIPI = ['superato', 'inattivo', 'profilo', 'settimanale'];
+export const TIPI = ['email', 'superato', 'inattivo', 'profilo', 'settimanale'];
 
 // Descrizione delle regole, in un posto solo. La legge anche il pannello di
 // amministrazione: se la panoramica mostrata e le regole applicate stessero in
@@ -26,6 +26,9 @@ export const LIMITI = [
 ];
 
 export const DESCRIZIONI = [
+  { tipo: 'email', titolo: 'Manca la tua email',
+    quando: "a chi si è iscritto prima che l'email fosse obbligatoria — una volta sola",
+    esempio: 'Aggiungila dal profilo: serve a restituirti l\'accesso se dimentichi il PIN.' },
   { tipo: 'superato', titolo: 'Ti hanno superato',
     quando: 'quando qualcuno ti passa in classifica',
     esempio: 'Pueblo ti ha passato: sei 3° in classifica.' },
@@ -64,6 +67,19 @@ export function decidi(giocatori, adesso = Date.now(), ora = null) {
 // L'ordine conta: la prima che si applica vince. In cima quella che dà più
 // motivo di tornare, in fondo quelle di servizio.
 function scegli(g, adesso, daUltimaPartita) {
+  const giaMandato = (tipo) => (g.tipiInviati || []).includes(tipo);
+
+  // 0. Manca l'email: viene prima di tutto perché senza di essa il gioco si
+  // blocca. Avvisare adesso evita che uno torni a giocare, spinto da un'altra
+  // notifica, e trovi un ostacolo che non si aspettava.
+  if (g.haEmail === false && !giaMandato('email')) {
+    return {
+      tipo: 'email',
+      titolo: 'Manca la tua email',
+      testo: 'Aggiungila dal profilo: serve a restituirti l\'accesso se dimentichi il PIN.',
+    };
+  }
+
   // 1. Ti hanno superato: c'è qualcosa da rifare, ed è appena successo
   if (g.posizionePrecedente && g.posizione &&
       g.posizione > g.posizionePrecedente && g.superatoDa) {
@@ -73,6 +89,10 @@ function scegli(g, adesso, daUltimaPartita) {
       testo: `${g.superatoDa} ti ha passato: sei ${g.posizione}° in classifica.`,
     };
   }
+
+  // Se manca l'email e l'abbiamo già segnalata, meglio tacere: invitarlo a
+  // giocare sapendo che troverà un blocco sarebbe una presa in giro.
+  if (g.haEmail === false) return null;
 
   // 2. Assente da un po'
   const giorni = Math.floor(daUltimaPartita / GIORNO);
@@ -87,7 +107,7 @@ function scegli(g, adesso, daUltimaPartita) {
   }
 
   // 3. Profilo incompleto: una volta sola, e solo a chi gioca davvero
-  if (!g.haFoto && g.partite >= 5 && g.ultimoTipo !== 'profilo') {
+  if (!g.haFoto && g.partite >= 5 && !giaMandato('profilo')) {
     return {
       tipo: 'profilo',
       titolo: 'Mettici la faccia',

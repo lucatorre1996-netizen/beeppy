@@ -25,14 +25,22 @@ più casi, riceve solo il primo.
 
 | # | Quando arriva | Cosa dice |
 | --- | --- | --- |
+| 0 | **Manca l'email**, a chi si è iscritto prima che fosse obbligatoria — una volta sola | *"Aggiungila dal profilo: serve a restituirti l'accesso se dimentichi il PIN."* |
 | 1 | **Qualcuno ti ha superato** in classifica dall'ultimo controllo | *"Pueblo ti ha passato: sei 3° in classifica."* |
 | 2 | **Non giochi da 3 giorni o più** | *"Sono 3 giorni che non giochi. Ti va una partita?"* — oltre i 14 giorni cambia in *"Sono 20 giorni che non voli. Il tuo record di 50 è ancora lì."* |
 | 3 | **Niente foto profilo**, e hai giocato almeno 5 partite | *"Aggiungi una foto al profilo: comparirà accanto al tuo nome in classifica."* (una volta sola) |
 | 4 | **Lunedì**, se sei in classifica | *"Sei 4° con 50. Regge un'altra settimana?"* |
 
-Perché quest'ordine: la prima è l'unica che arriva mentre c'è qualcosa da
-rifare *adesso*, ed è quella che riporta davvero a giocare. Le altre scendono
-verso il promemoria di servizio.
+Perché quest'ordine. L'email viene prima di tutto perché senza di essa il gioco
+si blocca: invitare qualcuno a giocare sapendo che troverà un ostacolo sarebbe
+una presa in giro — e infatti a chi manca l'email non viene mandato nient'altro.
+Poi il sorpasso, che è l'unica notifica che arriva mentre c'è qualcosa da rifare
+*adesso*. Le ultime scendono verso il promemoria di servizio.
+
+Le notifiche "una volta sola" (email e foto) si ricordano davvero: la colonna
+`tipi_inviati` tiene l'elenco di quelle già spedite a ciascuno. Guardare solo
+l'ultima mandata non basterebbe, perché viene sovrascritta e quelle da mandare
+una volta tornerebbero a partire.
 
 ## Gli annunci scritti a mano
 
