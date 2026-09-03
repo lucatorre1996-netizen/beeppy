@@ -100,6 +100,24 @@ qualsiasi momento dal proprio profilo, dove c'è anche **"Mandami una notifica d
 prova"**: la mostra il telefono stesso, senza passare da nessun server, e serve a
 vedere come appaiono prima di decidere.
 
+## Il consenso chiesto prima di giocare
+
+Prima della partita compare una schermata che spiega cosa arriverà e chiede il
+permesso. Ha un **"Più tardi"**, che l'amministratore può togliere accendendo
+*Notifiche obbligatorie* nel pannello.
+
+Anche con l'obbligo acceso, **due categorie passano comunque**:
+
+- chi ha **già negato** il permesso: il browser non riproporrà mai più quella
+  finestra, quindi bloccarlo significherebbe escluderlo per sempre;
+- chi apre da **Safari senza aver installato** il gioco: su iPhone le notifiche
+  esistono solo per le app aggiunte alla schermata Home, quindi non potrebbe
+  accettare nemmeno volendo.
+
+Non è un'attenuazione dell'obbligo, è l'unico modo di applicarlo senza chiudere
+fuori giocatori che non hanno fatto nulla di male. La schermata infatti si mostra
+solo a chi *può ancora decidere*.
+
 ## Il permesso non è forzabile
 
 Vale la pena scriverlo, perché è la prima cosa che viene in mente di chiedere:

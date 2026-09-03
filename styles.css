@@ -600,7 +600,9 @@ code {
 }
 
 /* --------------------------------------- schermata di installazione obbligata */
-#screen-install, #screen-email { background: rgba(20, 33, 43, 0.35); gap: 14px; }
+#screen-install, #screen-email, #screen-notifiche { background: rgba(20, 33, 43, 0.35); gap: 14px; }
+#screen-notifiche .install-passi .btn { width: 100%; }
+#screen-notifiche .btn-ghost { margin-top: 6px; }
 #screen-email .install-passi { text-align: left; }
 #email-form { display: flex; flex-direction: column; gap: 3px; }
 #email-form label { font-size: 13px; font-weight: 700; color: var(--ink-soft); margin-top: 6px; }

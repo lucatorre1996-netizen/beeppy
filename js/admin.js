@@ -196,6 +196,7 @@ async function aggiorna() {
   $('annuncio').value = conf.annuncio || '';
   $('registrazioni').checked = (conf.registrazioni_aperte || 'si') === 'si';
   $('obbliga-installazione').checked = (conf.richiedi_installazione || 'no') === 'si';
+  $('notifiche-obbligatorie').checked = (conf.notifiche_obbligatorie || 'no') === 'si';
 
   riempiPush();
 
@@ -379,9 +380,13 @@ async function salvaConfig() {
     p_chiave: 'richiedi_installazione',
     p_valore: $('obbliga-installazione').checked ? 'si' : 'no',
   });
+  const n = await c.rpc('admin_set_config', {
+    p_chiave: 'notifiche_obbligatorie',
+    p_valore: $('notifiche-obbligatorie').checked ? 'si' : 'no',
+  });
   b.disabled = false;
   b.textContent = 'Salva';
-  const err = a.error || r.error || i.error;
+  const err = a.error || r.error || i.error || n.error;
   esito(err ? err.message : 'Configurazione salvata.', Boolean(err));
 }
 

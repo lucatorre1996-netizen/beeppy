@@ -15,6 +15,7 @@ let volevaGiocare = false; // se l'accesso arriva da un tentativo di giocare
 let ultimoPin = null;      // solo in memoria: serve per attivare la biometria
                            // subito dopo l'accesso, senza richiedere il PIN
 let pannello = 'form';     // form | codice | recupero | profilo | nobackend
+let notificheChieste = false; // già mostrata in questa sessione: non si insiste
 let emailVerificata = false; // una volta accertato che l'email c'è, non si
                              // richiede più: "Rigioca" deve partire subito,
                              // senza una chiamata di rete davanti
@@ -109,6 +110,8 @@ export function initUI(g) {
   $('recupero-form').addEventListener('submit', inviaRecupero);
   $('dati-form').addEventListener('submit', salvaDati);
   $('email-form').addEventListener('submit', salvaEmailMancante);
+  $('notifiche-attiva').addEventListener('click', () => rispostaNotifiche(true));
+  $('notifiche-dopo').addEventListener('click', () => rispostaNotifiche(false));
   $('notifiche-si').addEventListener('click', attivaNotifiche);
   $('notifiche-no').addEventListener('click', () => {
     $('invito-notifiche').classList.add('hidden');
@@ -204,6 +207,13 @@ async function startGame() {
     emailVerificata = true;
   }
 
+  // Consenso alle notifiche: si chiede prima di giocare, una volta per sessione.
+  if (net.state.user && !notificheChieste && await deveChiedereNotifiche()) {
+    notificheChieste = true;
+    await mostraChiediNotifiche();
+    return;
+  }
+
   if (!net.state.user) {
     volevaGiocare = true;
     openAuth(giaConosciuto() ? 'Accedi per giocare' : 'Registrati per giocare',
@@ -217,7 +227,8 @@ async function startGame() {
 }
 
 export function showScreen(name) {
-  for (const id of ['screen-menu', 'screen-ready', 'screen-over', 'screen-install', 'screen-email']) {
+  for (const id of ['screen-menu', 'screen-ready', 'screen-over', 'screen-install',
+                    'screen-email', 'screen-notifiche']) {
     $(id).classList.toggle('is-on', id === `screen-${name}`);
   }
   // mentre si vola i pulsanti in alto si spostano di mezzo: un tap accidentale
@@ -747,6 +758,62 @@ async function cancellaAccount() {
   game.toMenu();
   showScreen('menu');
   refreshMenu();
+}
+
+// ------------------------------------------- consenso prima di giocare
+//
+// La schermata si mostra solo a chi PUÒ ancora decidere. Chi ha già negato il
+// permesso non la vede: il browser non riproporrebbe la finestra, quindi
+// sbarrargli la strada significherebbe escluderlo per sempre da un gioco a cui
+// è iscritto. Stessa cosa per chi apre da Safari senza aver installato Beeppy,
+// che su iPhone non può ricevere notifiche in nessun caso.
+async function deveChiedereNotifiche() {
+  if (!push.supportate()) return false;
+  if (push.permesso() !== 'default') return false;   // già deciso, in un senso o nell'altro
+  if (await push.giaIscritto()) return false;
+  return true;
+}
+
+async function mostraChiediNotifiche() {
+  $('notifiche-esito').textContent = '';
+  let obbligatorie = false;
+  try {
+    const cfg = await net.leggiConfig();
+    obbligatorie = (cfg.notifiche_obbligatorie || 'no') === 'si';
+  } catch (e) { /* in dubbio si lascia la via d'uscita */ }
+  $('notifiche-dopo').classList.toggle('hidden', obbligatorie);
+  showScreen('notifiche');
+}
+
+async function rispostaNotifiche(attiva) {
+  const btn = $('notifiche-attiva');
+  const esito = $('notifiche-esito');
+  if (!attiva) {
+    showScreen('none');
+    game.arm();
+    showScreen('ready');
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = 'Attendi...';
+  const out = await push.attiva();
+  btn.disabled = false;
+  btn.textContent = 'Attiva le notifiche';
+  if (!out.ok) {
+    // Ha detto di no, o qualcosa è andato storto: si gioca lo stesso. Tenerlo
+    // fermo qui non servirebbe a niente, perché la finestra del permesso non
+    // ricomparirà più.
+    esito.textContent = out.error + ' Si gioca lo stesso.';
+    setTimeout(() => {
+      showScreen('none');
+      game.arm();
+      showScreen('ready');
+    }, 2200);
+    return;
+  }
+  showScreen('none');
+  game.arm();
+  showScreen('ready');
 }
 
 // ---------------------------------------------------------- notifiche

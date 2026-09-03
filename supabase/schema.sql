@@ -136,7 +136,12 @@ insert into public.app_config (chiave, valore) values
   -- Sta qui e non nel codice perché è una decisione da provare e poter
   -- disfare in dieci secondi: chi arriva dal browser interno di WhatsApp non
   -- può installare niente, e un blocco rigido lo perderesti per sempre.
-  ('richiedi_installazione', 'no')
+  ('richiedi_installazione', 'no'),
+  -- 'si' toglie il "Più tardi" dalla schermata delle notifiche. Attenzione:
+  -- chi ha già rifiutato il permesso non può più concederlo dal browser, e chi
+  -- apre da Safari senza aver installato il gioco non può accettare affatto —
+  -- quelli passano comunque, altrimenti resterebbero chiusi fuori per sempre.
+  ('notifiche_obbligatorie', 'no')
 on conflict (chiave) do nothing;
 
 
@@ -613,7 +618,8 @@ begin
   if not public.is_admin() then
     raise exception 'non autorizzato';
   end if;
-  if p_chiave not in ('annuncio', 'registrazioni_aperte', 'richiedi_installazione') then
+  if p_chiave not in ('annuncio', 'registrazioni_aperte', 'richiedi_installazione',
+                      'notifiche_obbligatorie') then
     raise exception 'chiave non ammessa';
   end if;
   if char_length(coalesce(p_valore, '')) > 200 then

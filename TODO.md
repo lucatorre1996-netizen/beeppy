@@ -7,10 +7,9 @@ Ordinate per urgenza: la P0 blocca l'invito agli amici, il resto no.
 
 ## P0 — prima di far entrare gente
 
-- [ ] **Rieseguire `supabase/schema.sql`** un'ultima volta: aggiunge la colonna
-      `tipi_inviati` a `push_stato`, che serve alle notifiche da mandare una volta
-      sola (email mancante e foto profilo). Senza, quelle due tornerebbero a
-      partire dopo ogni altra notifica.
+- [ ] **Rieseguire `supabase/schema.sql`**: aggiunge la colonna `tipi_inviati` a
+      `push_stato` (serve alle notifiche da mandare una volta sola) e la chiave di
+      configurazione `notifiche_obbligatorie`.
 
 - [x] ~~Cancellare l'account di collaudo `verifica_prod`~~ — fatto.
 - [ ] **Rieseguire `supabase/schema.sql`.** Una parte è già stata eseguita (le
