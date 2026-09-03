@@ -84,7 +84,13 @@ mantenerle è peggio che non offrirle.
 
 ## Quando viene chiesto il permesso
 
-**A fine partita, dalla seconda in poi.** Mai all'apertura: chiedere il permesso
+**A fine partita.** Alla seconda per chi arriva adesso; **subito, alla prima**,
+per chi ha già un record — quello il gioco lo conosce, e fargli aspettare
+un'altra partita è solo tempo perso. A lui il testo cambia in *"Novità: ti
+avviso quando qualcuno ti supera in classifica"*, perché sappia perché glielo
+chiediamo proprio ora.
+
+Mai all'apertura: chiedere il permesso
 appena si entra è il modo più sicuro per farselo negare, e dopo un rifiuto il
 browser non lo richiede più — non c'è modo di tornare indietro se non dalle
 impostazioni del telefono.
@@ -93,6 +99,17 @@ Chi dice no non se lo vede più riproporre. Chiunque può cambiare idea in
 qualsiasi momento dal proprio profilo, dove c'è anche **"Mandami una notifica di
 prova"**: la mostra il telefono stesso, senza passare da nessun server, e serve a
 vedere come appaiono prima di decidere.
+
+## Il permesso non è forzabile
+
+Vale la pena scriverlo, perché è la prima cosa che viene in mente di chiedere:
+**non esiste modo di attivare le notifiche al posto di qualcuno.** Il browser
+concede il permesso solo tramite una finestra che controlla lui, dopo un gesto
+della persona; non c'è nessuna funzione per darlo dal codice. E senza quel
+passaggio non esiste nemmeno un indirizzo a cui spedire, perché l'iscrizione la
+genera il dispositivo. Vale per Beeppy come per qualsiasi altra app.
+
+L'unica leva è chiedere nel momento giusto, con una ragione comprensibile.
 
 ## Cosa manca per accenderle davvero
 

@@ -766,12 +766,23 @@ function partiteGiocate() {
 }
 
 function proponiNotifiche() {
-  let n = partiteGiocate() + 1;
+  const n = partiteGiocate() + 1;
   try { localStorage.setItem(CHIAVE_PARTITE, String(n)); } catch (e) { /* niente */ }
-  // dalla seconda partita: alla prima uno sta ancora capendo cos'è il gioco
-  const mostra = n >= 2 && net.state.user &&
+
+  // Alla seconda partita per chi arriva adesso: alla prima sta ancora capendo
+  // cos'è il gioco, e una richiesta di permesso in quel momento si becca un no.
+  // Subito, invece, per chi ha già un record: quello il gioco lo conosce già, e
+  // fargli aspettare un'altra partita è solo tempo perso.
+  const giaGiocatore = net.state.best > 0;
+  const mostra = (n >= 2 || giaGiocatore) && net.state.user &&
                  push.haSensoProporle(isStandalone());
   $('invito-notifiche').classList.toggle('hidden', !mostra);
+
+  // A chi gioca da prima spieghiamo anche perché gliela stiamo chiedendo ora
+  if (mostra && giaGiocatore) {
+    $('invito-notifiche').querySelector('p').textContent =
+      'Novità: ti avviso quando qualcuno ti supera in classifica. Lo attivo?';
+  }
 }
 
 async function attivaNotifiche() {
