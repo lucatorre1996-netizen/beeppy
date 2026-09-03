@@ -160,6 +160,40 @@ cancellazione dell'account, con doppia conferma.
 
 ### Altro
 
+### Fatte dall'analisi tecnica (3 settembre 2026)
+
+- [x] ~~Tetto ai 60 fps sugli schermi veloci~~ — su ProMotion il gioco disegnava
+      a 120 fps, doppio consumo per un guadagno visivo nullo. La frequenza si
+      misura con la mediana degli intervalli (non la media, e non durante il
+      caricamento: la prima versione misurava 70 Hz su uno schermo da 120 e si
+      bloccava lì). Sotto i 100 Hz non si tocca niente, perché dimezzare un
+      90 Hz darebbe 45 fps. Coperto da `scripts/check-fps.js`.
+- [x] ~~Serbatoio delle particelle~~ — erano 5 oggetti per battito e 26 per
+      morte, più `splice` a ogni spegnimento. Ora il serbatoio è fisso a 140 e
+      spegnere una particella è uno scambio con l'ultima viva.
+- [x] ~~Ape e polline cotti~~ — **misurato**: l'ape passa da 85 a 23 operazioni
+      di canvas per fotogramma (gradiente ricreato ogni volta compreso), il
+      polline da 156 a 52. Circa 166 operazioni in meno per fotogramma, cioè
+      diecimila al secondo. Verificato pixel per pixel contro la versione
+      precedente: differenza media 4 su 255, e **tutta sulle sagome, zero
+      all'interno** — è solo antialiasing.
+- [x] ~~Sezioni a ritmo dopo il punto 40~~ — il tracciato alterna blocchi larghi
+      e veloci a blocchi stretti e lenti. Il varco oscilla fra 143 e 205 dove
+      prima era piatto. **La velocità non è simmetrica, ed è il risultato di una
+      misura**: con ±5% il pilota automatico segnava il 39% di punti in più,
+      perché i tratti larghi erano larghi *e* lenti. Con +9% dove si allarga e
+      −3% dove si stringe la difficoltà torna quella di prima (+8%).
+- [x] ~~Fermo immagine sulla morte~~ — un terzo di secondo sul punto d'impatto.
+      Un tocco durante la caduta salta subito al pannello: fra la morte e il
+      "Rigioca" c'era più di un secondo di animazione.
+- [x] ~~Vibrazione~~ — 24 ms alla morte. Solo Android: su iOS il web non ha
+      vibrazione, e non è una dimenticanza nostra.
+- [x] ~~Pilota automatico (`scripts/pilota.js`)~~ — il collaudo usava un tap a
+      cadenza fissa che moriva prima del primo tronco: un test di determinismo
+      su 1,9 secondi senza un punto segnato non provava niente. Ora gioca
+      partite da centinaia di punti, e serve anche a **misurare** l'effetto di
+      una modifica alla curva invece di indovinarlo.
+
 - [ ] **Musica di sottofondo**, sintetizzata con WebAudio come gli effetti (zero
       byte scaricati): basso, arpeggio nella stessa scala pentatonica dei suoni di
       punto, e tempo che accelera con la difficoltà. Serve un secondo interruttore

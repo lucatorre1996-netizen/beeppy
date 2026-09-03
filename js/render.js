@@ -115,6 +115,27 @@ function bakeGround() {
 
 // ---------------------------------------------------------------- tronchi
 
+// Un solo granello di polline, cotto grande e poi rimpicciolito quanto serve.
+// I bordi sfumati evitano che si veda il gradino della circonferenza quando
+// viene ingrandito sul piano vicino.
+function bakePollen() {
+  const R = 16;                       // raggio della cottura, non del granello
+  const c = document.createElement('canvas');
+  c.width = c.height = R * 2;
+  const x = c.getContext('2d');
+  // Le fermate di colore usano la stessa tinta del polline con l'opacita' che
+  // scende a zero: sfumare verso il bianco farebbe virare il bordo.
+  const g = x.createRadialGradient(R, R, 0, R, R, R);
+  g.addColorStop(0, 'rgba(255,236,160,0.85)');
+  g.addColorStop(0.70, 'rgba(255,236,160,0.85)');
+  g.addColorStop(1, 'rgba(255,236,160,0)');
+  x.fillStyle = g;
+  x.beginPath();
+  x.arc(R, R, R, 0, 7);
+  x.fill();
+  return c;
+}
+
 function bakeBark(seed) {
   const w = K.TRUNK_W;
   const h = K.WORLD_H;
@@ -240,6 +261,26 @@ function drawMoss(ctx, x, y, w, seedish) {
 
 // ---------------------------------------------------------------- ape
 
+// Il corpo dell'ape non cambia mai: solo la rotazione e la fase delle ali.
+// Prima veniva ridisegnato da zero a ogni fotogramma, gradiente compreso, cioe'
+// una trentina di operazioni di path e un oggetto gradiente nuovo sessanta volte
+// al secondo. Ora si cuoce una volta in un canvas fuori schermo e si stampa.
+// Le ali restano procedurali, perche' quelle si muovono davvero.
+const APE_OX = 34, APE_OY = 30, APE_W = 68, APE_H = 53;
+const APE_RES = 3;   // piu' fine di RES: l'ape si vede anche ingrandita nel profilo
+let apeCotta = null;
+
+function bakeApe() {
+  const c = document.createElement('canvas');
+  c.width = APE_W * APE_RES;
+  c.height = APE_H * APE_RES;
+  const x = c.getContext('2d');
+  x.scale(APE_RES, APE_RES);
+  x.translate(APE_OX, APE_OY);
+  disegnaCorpoApe(x);
+  return c;
+}
+
 export function drawBee(ctx, x, y, rot, wingPhase, sc = 1.12) {
   ctx.save();
   ctx.translate(x, y);
@@ -272,6 +313,15 @@ export function drawBee(ctx, x, y, rot, wingPhase, sc = 1.12) {
     ctx.restore();
   }
 
+  if (!apeCotta) apeCotta = bakeApe();
+  ctx.drawImage(apeCotta, -APE_OX, -APE_OY, APE_W, APE_H);
+
+  ctx.restore();
+}
+
+// Tutto cio' che nell'ape sta fermo. Disegnato in coordinate locali, con
+// l'origine al centro del corpo: la cottura sposta l'origine e basta.
+function disegnaCorpoApe(ctx) {
   // corpo
   const bodyG = ctx.createLinearGradient(0, -13, 0, 14);
   bodyG.addColorStop(0, '#ffd772');
@@ -354,8 +404,6 @@ export function drawBee(ctx, x, y, rot, wingPhase, sc = 1.12) {
   ctx.beginPath();
   ctx.ellipse(-3, -9, 12, 4.2, -0.12, 0, 7);
   ctx.fill();
-
-  ctx.restore();
 }
 
 // ---------------------------------------------------------------- utili
@@ -387,6 +435,7 @@ export class Renderer {
       forest: bakeForest(150, 987654321),
       ground: bakeGround(),
       bark: [bakeBark(11111), bakeBark(2468013), bakeBark(777777)],
+      pollen: bakePollen(),
     };
     this.view = { cssW: 1, cssH: 1, dpr: 1, scale: 1, worldW: 400, bleed: 0 };
     this.resize();
@@ -447,7 +496,9 @@ export class Renderer {
     this.drawGround(ctx, g, W, floorY, v.bleed);
 
     clipGame();
-    for (const p of g.particles) {
+    // solo le vive: il serbatoio e' lungo sempre uguale, le spente stanno in coda
+    for (let i = 0; i < g.particelleVive; i++) {
+      const p = g.particles[i];
       ctx.globalAlpha = Math.max(0, p.life / p.max) * p.a;
       ctx.fillStyle = p.c;
       ctx.beginPath();
@@ -508,16 +559,19 @@ export class Renderer {
     tileX(this.baked.ground.c, ctx, g.scrollX, floorY, W, K.GROUND_H + 8, bleed, bleed);
   }
 
+  // Il polline sono 26 granelli disegnati DUE volte per fotogramma (piano
+  // lontano e piano vicino): con un path a testa erano 52 costruzioni di
+  // geometria al fotogramma per della semplice atmosfera. Ora il granello e'
+  // cotto una volta sola in uno sprite e si stampa.
   drawPollen(ctx, g, W, H, sizeMul, speedMul) {
+    const sprite = this.baked.pollen;
     ctx.save();
     for (const p of g.pollen) {
       const x = ((p.x - g.scrollX * 0.08 * speedMul) % (W + 80) + W + 80) % (W + 80) - 40;
       const y = p.y + Math.sin(g.time * p.w + p.ph) * 14;
+      const r = p.r * sizeMul;
       ctx.globalAlpha = p.a * (sizeMul > 1 ? 0.5 : 0.75);
-      ctx.fillStyle = P.pollen;
-      ctx.beginPath();
-      ctx.arc(x, y, p.r * sizeMul, 0, 7);
-      ctx.fill();
+      ctx.drawImage(sprite, x - r, y - r, r * 2, r * 2);
     }
     ctx.restore();
   }

@@ -17,7 +17,7 @@ const SEEDS = [1, 7, 42, 1234, 99999, 31337, 8080808];
 // continua ogni battito dà FLAP_V^2/(2*GRAVITY) unità e poi si ricade: la
 // velocità media di salita è circa metà dell'impulso.
 function salitaPossibile(score) {
-  return K.CLIMB_RATE * (K.SPACING / K.speedForScore(score));
+  return K.CLIMB_RATE * (K.SPACING / K.speedRitmo(score));
 }
 
 let peggiore = { rapporto: 0 };
@@ -51,17 +51,21 @@ for (const seed of SEEDS) {
 // Un battito d'ali fa risalire RISE unità e non si può frenare a metà: se il
 // varco non lascia almeno questo spazio piu' un margine, il finale diventa
 // ingiocabile a prescindere dall'abilità.
-const RISE = K.FLAP_V * K.FLAP_V / (2 * K.GRAVITY);
+const RISE = K.RISE;
 const MARGINE_MINIMO = 40;
 let varcoStretto = null;
 for (let n = 0; n <= 400; n++) {
-  const utile = K.gapForScore(n) - 2 * K.BEE_R - RISE;
+  const utile = K.gapRitmo(n) - 2 * K.BEE_R - RISE;
   if (utile < MARGINE_MINIMO) {
-    varcoStretto = { tronco: n, varco: Math.round(K.gapForScore(n)), utile: Math.round(utile) };
+    varcoStretto = { tronco: n, varco: Math.round(K.gapRitmo(n)), utile: Math.round(utile) };
     break;
   }
 }
-const utileFinale = K.gapForScore(400) - 2 * K.BEE_R - RISE;
+// il varco più stretto NON è più quello dell'ultimo tronco: con il ritmo può
+// capitare in mezzo a un blocco stretto, quindi si cerca il minimo vero.
+let varcoMinimo = Infinity;
+for (let n = 0; n <= 400; n++) varcoMinimo = Math.min(varcoMinimo, K.gapRitmo(n));
+const utileFinale = varcoMinimo - 2 * K.BEE_R - RISE;
 console.log(`rimbalzo di un battito: ${RISE.toFixed(0)} unità, hitbox ${2 * K.BEE_R}`);
 console.log(`spazio utile nel varco più stretto: ${utileFinale.toFixed(0)} unità ` +
             `(minimo accettato: ${MARGINE_MINIMO})`);

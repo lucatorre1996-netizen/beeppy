@@ -25,12 +25,65 @@ window.beeppy = { game, renderer, net };
 if (window.beeppyAvviato) window.beeppyAvviato();
 
 // ------------------------------------------------------------ ciclo di gioco
+//
+// Tetto ai 60 fps sugli schermi veloci. Su un iPhone con ProMotion
+// requestAnimationFrame gira a 120 Hz: l'intero schermo veniva ridisegnato il
+// doppio delle volte, con il doppio del consumo, per un guadagno visivo quasi
+// nullo su un gioco che scorre di lato. La simulazione gira gia' a 120 Hz per
+// conto suo e resta identica: si disegna di meno, non si simula di meno.
+//
+// Il salto si calcola dalla frequenza vera dello schermo, misurata nei primi
+// fotogrammi, e non si applica mai sotto i 100 Hz: su uno schermo a 90 Hz
+// saltare un fotogramma su due darebbe 45 fps, cioe' peggio di prima.
 let last = performance.now();
 let loggedError = false;
+
+let salta = 1;             // 1 = disegna tutti i fotogrammi
+
+// La frequenza dello schermo si misura con la MEDIANA degli intervalli fra
+// fotogrammi, non con la media, e non durante il caricamento. La prima versione
+// faceva entrambi gli sbagli: campionava i primi 400 ms, quando la pagina sta
+// ancora montando moduli, misurava 70 Hz su uno schermo da 120 e si bloccava li'
+// per sempre. La mediana ignora i fotogrammi lenti isolati, e il calcolo si
+// ripete a ogni finestra piena: cosi' si corregge da solo anche quando il
+// telefono rallenta per il calore.
+const CAMPIONI = 90;
+const intervalli = new Float64Array(CAMPIONI);
+let iCampione = 0;
+let nCampioni = 0;
+let riscaldamento = 45;    // fotogrammi buttati via all'avvio
+let precedente = 0;
+
+function misuraSchermo(now) {
+  if (riscaldamento > 0) { riscaldamento--; precedente = now; return; }
+  if (precedente) {
+    intervalli[iCampione] = now - precedente;
+    iCampione = (iCampione + 1) % CAMPIONI;
+    if (nCampioni < CAMPIONI) nCampioni++;
+  }
+  precedente = now;
+  if (nCampioni < CAMPIONI || iCampione !== 0) return;   // solo a finestra piena
+
+  const ordinati = Array.from(intervalli).sort((a, b) => a - b);
+  const hz = 1000 / ordinati[CAMPIONI >> 1];
+  // Sotto i 100 Hz non si tocca niente: su uno schermo a 90 Hz saltare un
+  // fotogramma su due darebbe 45 fps, cioe' peggio di non fare nulla.
+  // Il +0.05 e' tolleranza sui decimali: la mediana di uno schermo a 240 Hz esce
+  // 239,99, e senza margine floor() darebbe 3 invece di 4.
+  salta = hz >= 100 ? Math.max(2, Math.floor(hz / 60 + 0.05)) : 1;
+}
+
+let contatore = 0;
 function frame(now) {
   // il prossimo frame va chiesto SUBITO: così un errore isolato (es. una
   // dimensione a zero durante la rotazione dello schermo) non ferma il gioco.
   requestAnimationFrame(frame);
+  misuraSchermo(now);
+
+  // I fotogrammi saltati non si simulano nemmeno: il delta si accumula e il
+  // passo fisso lo recupera al fotogramma dopo, senza cambiare la fisica.
+  if (++contatore % salta !== 0) return;
+
   const dt = (now - last) / 1000;
   last = now;
   try {
@@ -44,6 +97,9 @@ function frame(now) {
   }
 }
 requestAnimationFrame(frame);
+
+// utile per verificare il tetto dalla console
+window.beeppyFps = () => ({ salta, campioni: nCampioni });
 
 // ---------------------------------------------------------------- eventi
 let resizeTimer = 0;

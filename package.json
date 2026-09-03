@@ -8,7 +8,7 @@
     "dev": "node scripts/serve.js",
     "test:sim": "node scripts/sim-check.js",
     "test:fairness": "node scripts/check-fairness.js",
-    "test": "npm run check && node scripts/sim-check.js && node scripts/check-fairness.js && node scripts/notifiche/test.js",
+    "test": "npm run check && node scripts/sim-check.js && node scripts/check-fairness.js && node scripts/check-fps.js && node scripts/notifiche/test.js",
     "check": "node scripts/check.js",
     "chiavi-push": "node scripts/genera-chiavi-push.js",
     "test:notifiche": "node scripts/notifiche/test.js",

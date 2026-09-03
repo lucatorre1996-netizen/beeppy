@@ -72,7 +72,10 @@ export const SHIFT_MARGIN = 0.62; // margine: arrivare non basta, va anche centr
 export const FALL_BONUS = 1.7;
 
 export function maxGapShift(score) {
-  return CLIMB_RATE * (SPACING / speedForScore(score)) * SHIFT_MARGIN;
+  // usa la velocità CON il ritmo: in un tratto veloce c'è meno tempo per salire,
+  // e l'invariante deve saperlo, altrimenti il ritmo rifarebbe nascere le coppie
+  // irraggiungibili che questo limite era nato per togliere.
+  return CLIMB_RATE * (SPACING / speedRitmo(score)) * SHIFT_MARGIN;
 }
 
 // Tronco in cui finisce la prima rampa del varco (~44).
@@ -91,4 +94,56 @@ export function speedForScore(score) {
   if (score <= SPEED_KNEE_SCORE) return SPEED_START + score * SPEED_STEP;
   const t = Math.min(1, (score - SPEED_KNEE_SCORE) / (SPEED_TOP_SCORE - SPEED_KNEE_SCORE));
   return SPEED_KNEE + (SPEED_MAX - SPEED_KNEE) * t;
+}
+
+
+// ------------------------------------------------------------------- ritmo
+//
+// Dal punto RITMO_DA in poi il tracciato alterna blocchi con carattere opposto
+// a difficoltà media invariata: uno largo e veloce, uno stretto e lento.
+//
+// Perché serve: fra il punto 30 e il 150 la difficoltà cresce del 12% in
+// velocità e del 9% in ampiezza. Sono cento secondi in cui il gioco non cambia,
+// e per chi ci arriva non è più una prova di abilità ma di pazienza. Il vuoto
+// l'aveva lasciato maxGapShift, che togliendo le coppie irraggiungibili aveva
+// tolto anche l'ultima fonte di varietà. Il ritmo la rimette senza rimettere il
+// caso: è una funzione pura dell'indice del tronco, quindi la simulazione
+// resta deterministica e i replay continuano a valere.
+export const RITMO_DA = 40;
+export const RITMO_BLOCCO = 11;   // lunghezza di un blocco, in tronchi
+export const RITMO_GAP = 0.16;    // ±16% sull'ampiezza del varco
+// La velocità NON è simmetrica, ed è il risultato di una misura, non di un
+// gusto. Con ±5% simmetrico il pilota automatico segnava il 39% di punti in più:
+// i tratti larghi erano un regalo, perché larghi E lenti. Alzando la velocità
+// solo dove il varco si allarga, la difficoltà media torna quella di prima
+// (+8%, dentro il rumore di dodici partite) e la varietà resta tutta.
+export const RITMO_VEL_LARGO = 0.09;    // +9% dove il varco si allarga
+export const RITMO_VEL_STRETTO = 0.03;  // −3% dove si stringe: serve precisione, non riflessi
+
+// Rimbalzo di un battito: l'ape non può frenare a metà salita, quindi nel varco
+// ci deve stare la sua hitbox più questo, più un margine per passarci in mezzo.
+export const RISE = (FLAP_V * FLAP_V) / (2 * GRAVITY);
+// Pavimento fisico del varco. Il ritmo si comprime da sé quando il varco base è
+// già stretto, invece di produrre tratti che nessuno può passare: al punto 150
+// il varco vale 160, e un −16% secco lo porterebbe sotto il minimo giocabile.
+export const GAP_FISICO_MIN = 2 * BEE_R + RISE + 42;
+
+// −1 (stretto e lento) … 0 (neutro) … +1 (largo e veloce).
+export function ritmo(score) {
+  if (score < RITMO_DA) return 0;
+  const passati = score - RITMO_DA;
+  const blocco = Math.floor(passati / RITMO_BLOCCO);
+  const dentro = (passati % RITMO_BLOCCO) / RITMO_BLOCCO;
+  // rampa ai bordi del blocco: un cambio netto si sentirebbe come uno scatto
+  const morbido = Math.min(1, Math.min(dentro, 1 - dentro) * 5);
+  return (blocco % 2 === 0 ? 1 : -1) * morbido;
+}
+
+export function speedRitmo(score) {
+  const r = ritmo(score);
+  return speedForScore(score) * (1 + (r > 0 ? RITMO_VEL_LARGO : RITMO_VEL_STRETTO) * r);
+}
+
+export function gapRitmo(score) {
+  return Math.max(GAP_FISICO_MIN, gapForScore(score) * (1 + RITMO_GAP * ritmo(score)));
 }

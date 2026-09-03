@@ -6,6 +6,32 @@ import { sfxFlap, sfxScore, sfxHit, sfxFall, unlockAudio } from './audio.js';
 
 const MAX_FRAME = 0.25; // se la scheda torna in primo piano non recuperiamo minuti di fisica
 
+// Le particelle vivono in un serbatoio di dimensione fissa, creato una volta
+// sola. Prima ogni battito ne allocava 5 e ogni morte 26, e la rimozione usava
+// splice: decine di oggetti al secondo creati e buttati, piu' spostamenti di
+// memoria. Su un telefono economico una pausa del garbage collector nel momento
+// sbagliato e' uno scatto proprio mentre passi in un varco.
+// Le vive stanno sempre in testa all'array: spegnerne una e' uno scambio con
+// l'ultima viva, non una rimozione.
+const MAX_PARTICELLE = 140;
+
+function serbatoioParticelle() {
+  const p = [];
+  for (let i = 0; i < MAX_PARTICELLE; i++) {
+    p.push({ x: 0, y: 0, vx: 0, vy: 0, r: 1, c: '#fff', a: 1, life: 0, max: 1, g: 0 });
+  }
+  return p;
+}
+
+// Vibrazione breve. Esiste solo su Android: su iOS il web non ha vibrazione, e
+// non e' una dimenticanza. Racchiusa perche' alcuni browser la dichiarano e poi
+// lanciano un'eccezione se la pagina non e' in primo piano.
+function vibra(ms) {
+  try {
+    if (navigator.vibrate) navigator.vibrate(ms);
+  } catch (e) { /* niente */ }
+}
+
 export class Game {
   constructor(renderer) {
     this.renderer = renderer;
@@ -19,13 +45,15 @@ export class Game {
     this.beeRot = 0;
     this.wingPhase = 0;
     this.beeVisible = false; // nel menu comanda il logo, non il canvas
-    this.particles = [];
+    this.particles = serbatoioParticelle();
+    this.particelleVive = 0;
     this.pollen = [];
     this.onGameOver = null;
     this.onStart = null;
     this.onScore = null;
     this.deathY = 0;
     this.deathVy = 0;
+    this.freeze = 0;
     this.startedAt = 0;
 
     this.makePollen();
@@ -53,7 +81,7 @@ export class Game {
   newSim(seed = randomSeed()) {
     this.sim = new Sim(seed, this.worldW);
     this.beeRot = 0;
-    this.particles.length = 0;
+    this.particelleVive = 0;   // il serbatoio resta, si azzerano solo le vive
   }
 
   // Chiamato quando il canvas cambia dimensione (rotazione schermo, tastiera).
@@ -84,6 +112,13 @@ export class Game {
 
   tap() {
     unlockAudio();
+    // Durante la caduta il tocco la salta e porta subito al pannello. Fra la
+    // morte e il "Rigioca" c'erano piu' di un secondo di animazione: chi vuole
+    // riprovare subito non deve stare a guardarla.
+    if (this.phase === 'dying') {
+      this.atterra();
+      return;
+    }
     if (this.phase === 'ready') {
       this.phase = 'playing';
       this.startedAt = performance.now();
@@ -96,57 +131,64 @@ export class Game {
     }
   }
 
+  // Prende la prima particella spenta. Se il serbatoio e' pieno rinuncia: meglio
+  // una scintilla in meno che un'allocazione durante la partita.
+  accendi() {
+    if (this.particelleVive >= MAX_PARTICELLE) return null;
+    return this.particles[this.particelleVive++];
+  }
+
   puff() {
     for (let i = 0; i < 5; i++) {
-      this.particles.push({
-        x: this.sim.beeX - 14 + (Math.random() - 0.5) * 8,
-        y: this.sim.bee.y + 8 + (Math.random() - 0.5) * 8,
-        vx: -60 - Math.random() * 90,
-        vy: 30 + Math.random() * 70,
-        r: 2 + Math.random() * 3.6,
-        c: 'rgba(255,255,255,0.75)',
-        a: 0.6,
-        life: 0.45,
-        max: 0.45,
-        g: 40,
-      });
+      const p = this.accendi();
+      if (!p) return;
+      p.x = this.sim.beeX - 14 + (Math.random() - 0.5) * 8;
+      p.y = this.sim.bee.y + 8 + (Math.random() - 0.5) * 8;
+      p.vx = -60 - Math.random() * 90;
+      p.vy = 30 + Math.random() * 70;
+      p.r = 2 + Math.random() * 3.6;
+      p.c = 'rgba(255,255,255,0.75)';
+      p.a = 0.6;
+      p.life = 0.45;
+      p.max = 0.45;
+      p.g = 40;
     }
   }
 
   sparkle(n) {
     for (let i = 0; i < 10; i++) {
+      const p = this.accendi();
+      if (!p) return;
       const ang = Math.random() * Math.PI * 2;
-      this.particles.push({
-        x: this.sim.beeX + 10,
-        y: this.sim.bee.y,
-        vx: Math.cos(ang) * (60 + Math.random() * 120),
-        vy: Math.sin(ang) * (60 + Math.random() * 120),
-        r: 1.4 + Math.random() * 2.6,
-        c: P.pollen,
-        a: 1,
-        life: 0.5,
-        max: 0.5,
-        g: 120,
-      });
+      p.x = this.sim.beeX + 10;
+      p.y = this.sim.bee.y;
+      p.vx = Math.cos(ang) * (60 + Math.random() * 120);
+      p.vy = Math.sin(ang) * (60 + Math.random() * 120);
+      p.r = 1.4 + Math.random() * 2.6;
+      p.c = P.pollen;
+      p.a = 1;
+      p.life = 0.5;
+      p.max = 0.5;
+      p.g = 120;
     }
   }
 
   burst() {
     for (let i = 0; i < 26; i++) {
+      const p = this.accendi();
+      if (!p) return;
       const ang = Math.random() * Math.PI * 2;
       const sp = 80 + Math.random() * 260;
-      this.particles.push({
-        x: this.sim.beeX,
-        y: this.sim.bee.y,
-        vx: Math.cos(ang) * sp,
-        vy: Math.sin(ang) * sp - 60,
-        r: 1.5 + Math.random() * 4,
-        c: Math.random() > 0.4 ? P.beeBody : 'rgba(255,255,255,0.9)',
-        a: 1,
-        life: 0.7 + Math.random() * 0.4,
-        max: 1.1,
-        g: 700,
-      });
+      p.x = this.sim.beeX;
+      p.y = this.sim.bee.y;
+      p.vx = Math.cos(ang) * sp;
+      p.vy = Math.sin(ang) * sp - 60;
+      p.r = 1.5 + Math.random() * 4;
+      p.c = Math.random() > 0.4 ? P.beeBody : 'rgba(255,255,255,0.9)';
+      p.a = 1;
+      p.life = 0.7 + Math.random() * 0.4;
+      p.max = 1.1;
+      p.g = 700;
     }
   }
 
@@ -159,7 +201,7 @@ export class Game {
     this.scorePop *= Math.pow(0.0001, dt);
 
     const scrollSpeed =
-      this.phase === 'playing' ? K.speedForScore(this.sim.score)
+      this.phase === 'playing' ? K.speedRitmo(this.sim.score)
       : this.phase === 'dying' || this.phase === 'over' ? 0
       : K.SPEED_START * 0.45;
     this.scrollX += scrollSpeed * dt;
@@ -197,16 +239,16 @@ export class Game {
       this.sim.bee.y = K.WORLD_H * 0.46 + Math.sin(this.time * 2.2) * 16;
       this.sim.bee.vy = Math.cos(this.time * 2.2) * 34;
     } else if (this.phase === 'dying') {
-      // caduta finale, indipendente dalla simulazione (che è già conclusa)
-      this.deathVy = Math.min(1100, this.deathVy + 2400 * dt);
-      this.sim.bee.y += this.deathVy * dt;
-      const floor = K.WORLD_H - K.GROUND_H - K.BEE_R;
-      if (this.sim.bee.y >= floor) {
-        this.sim.bee.y = floor;
-        this.phase = 'over';
-        this.shake = 7;
-        sfxFall();
-        if (this.onGameOver) this.onGameOver(this.result());
+      if (this.freeze > 0) {
+        // Fermo immagine sul punto d'impatto. Mezzo secondo in cui l'ape resta
+        // dov'e' morta: chi capisce perche' e' morto riprova, chi non lo capisce
+        // da' la colpa al gioco.
+        this.freeze -= dt;
+      } else {
+        // caduta finale, indipendente dalla simulazione (che è già conclusa)
+        this.deathVy = Math.min(1100, this.deathVy + 2400 * dt);
+        this.sim.bee.y += this.deathVy * dt;
+        if (this.sim.bee.y >= K.WORLD_H - K.GROUND_H - K.BEE_R) this.atterra();
       }
     }
 
@@ -217,12 +259,14 @@ export class Game {
     const k = 1 - Math.pow(0.0009, dt);
     this.beeRot += (targetRot - this.beeRot) * k;
 
-    // particelle
-    for (let i = this.particles.length - 1; i >= 0; i--) {
+    // particelle: scambio con l'ultima viva invece di splice
+    for (let i = this.particelleVive - 1; i >= 0; i--) {
       const p = this.particles[i];
       p.life -= dt;
       if (p.life <= 0) {
-        this.particles.splice(i, 1);
+        this.particelleVive--;
+        this.particles[i] = this.particles[this.particelleVive];
+        this.particles[this.particelleVive] = p;
         continue;
       }
       p.vy += p.g * dt;
@@ -234,10 +278,25 @@ export class Game {
   die() {
     this.phase = 'dying';
     this.deathVy = -220; // piccolo rimbalzo, come nei giochi arcade
+    this.freeze = 0.32;
     this.shake = 14;
     this.flash = 0.55;
     this.burst();
     sfxHit();
+    vibra(24);
+  }
+
+  // Fine della morte: chiamata sia dalla caduta arrivata a terra sia dal tocco
+  // che la salta. Sta in un posto solo perche' deve annunciare la fine partita
+  // esattamente una volta.
+  atterra() {
+    if (this.phase !== 'dying') return;
+    this.sim.bee.y = K.WORLD_H - K.GROUND_H - K.BEE_R;
+    this.phase = 'over';
+    this.freeze = 0;
+    this.shake = 7;
+    sfxFall();
+    if (this.onGameOver) this.onGameOver(this.result());
   }
 
   result() {

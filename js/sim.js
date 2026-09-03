@@ -43,7 +43,7 @@ export class Sim {
   spawnUntil(x) {
     while (this.nextTrunkX < x) {
       const idx = this.spawned++;
-      const gap = K.gapForScore(idx);
+      const gap = K.gapRitmo(idx);
       const bandaMin = K.GAP_MARGIN_TOP + gap / 2;
       const bandaMax = this.floorY - K.GAP_MARGIN_BOTTOM - gap / 2;
 
@@ -106,7 +106,7 @@ export class Sim {
       if (this.bee.vy < 0) this.bee.vy = 0;
     }
 
-    const speed = K.speedForScore(this.score);
+    const speed = K.speedRitmo(this.score);
     const dx = speed * K.DT;
     for (const t of this.trunks) t.x -= dx;
     this.nextTrunkX -= dx;
