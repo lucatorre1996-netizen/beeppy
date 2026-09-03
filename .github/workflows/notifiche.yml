@@ -40,11 +40,13 @@ jobs:
   notifiche:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # v5 e non v4: GitHub sta dismettendo Node 20 per le proprie azioni, e le
+      # v4 venivano forzate su Node 24 con un avviso a ogni giro.
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '22'
 
       # Dice quali segreti trova e quali no, senza mai mostrarne il contenuto.
       # Serve a scoprire subito un nome scritto male, invece di ritrovarsi con
