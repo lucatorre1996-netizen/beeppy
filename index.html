@@ -442,6 +442,12 @@
   </div>
 </div>
 
+<!-- LA versione, dichiarata una volta sola. La usano la rete di sicurezza qui
+     sotto (per ricaricare i file giusti), le segnalazioni di guasto (sapere
+     QUALE versione si e' rotta e' meta' della diagnosi) e la import map, che
+     pero' non puo' leggerla: quella va aggiornata a mano insieme a questa. -->
+<script>window.BEEPPY_V = '20';</script>
+
 <script>
 // Rete di sicurezza all'avvio, in JavaScript classico: gira anche quando i
 // moduli ES non partono. Se il gioco non si avvia, chi apre la pagina deve
@@ -451,9 +457,14 @@
 // JavaScript vecchio.
 (function () {
   var avviato = false;
-  var V = '13';  // stessa versione della import map qui sopra
+  // La versione viene da window.BEEPPY_V, dichiarata una volta sola sopra la
+  // import map. Prima era scritta a mano anche qui, ed era rimasta indietro di
+  // sette versioni: la rete di sicurezza ricaricava file che non esistevano
+  // piu' e ignorava quelli nuovi, cioe' faceva finta di funzionare.
+  var V = window.BEEPPY_V || '';
   var codice = ['index.html', 'styles.css'].concat(
-    ['main','game','sim','render','palette','constants','audio','ui','net','rng','config','install','biometric']
+    ['main','game','sim','render','palette','constants','audio','ui','net','rng',
+     'config','install','biometric','push','guasti']
       .map(function (m) { return 'js/' + m + '.js?v=' + V; }));
 
   window.beeppyAvviato = function () { avviato = true; };
@@ -510,23 +521,24 @@
 <script type="importmap">
 {
   "imports": {
-      "./js/main.js": "./js/main.js?v=19",
-      "./js/game.js": "./js/game.js?v=19",
-      "./js/sim.js": "./js/sim.js?v=19",
-      "./js/render.js": "./js/render.js?v=19",
-      "./js/palette.js": "./js/palette.js?v=19",
-      "./js/constants.js": "./js/constants.js?v=19",
-      "./js/audio.js": "./js/audio.js?v=19",
-      "./js/ui.js": "./js/ui.js?v=19",
-      "./js/net.js": "./js/net.js?v=19",
-      "./js/rng.js": "./js/rng.js?v=19",
-      "./js/config.js": "./js/config.js?v=19",
-      "./js/install.js": "./js/install.js?v=19",
-      "./js/biometric.js": "./js/biometric.js?v=19",
-      "./js/push.js": "./js/push.js?v=19"
+      "./js/main.js": "./js/main.js?v=20",
+      "./js/guasti.js": "./js/guasti.js?v=20",
+      "./js/game.js": "./js/game.js?v=20",
+      "./js/sim.js": "./js/sim.js?v=20",
+      "./js/render.js": "./js/render.js?v=20",
+      "./js/palette.js": "./js/palette.js?v=20",
+      "./js/constants.js": "./js/constants.js?v=20",
+      "./js/audio.js": "./js/audio.js?v=20",
+      "./js/ui.js": "./js/ui.js?v=20",
+      "./js/net.js": "./js/net.js?v=20",
+      "./js/rng.js": "./js/rng.js?v=20",
+      "./js/config.js": "./js/config.js?v=20",
+      "./js/install.js": "./js/install.js?v=20",
+      "./js/biometric.js": "./js/biometric.js?v=20",
+      "./js/push.js": "./js/push.js?v=20"
   }
 }
 </script>
-<script type="module" src="js/main.js?v=19"></script>
+<script type="module" src="js/main.js?v=20"></script>
 </body>
 </html>

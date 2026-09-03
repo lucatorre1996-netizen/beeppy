@@ -7,6 +7,12 @@ Ordinate per urgenza: la P0 blocca l'invito agli amici, il resto no.
 
 ## P0 — prima di far entrare gente
 
+- [ ] **Rieseguire `supabase/schema.sql`** — ora serve anche per le **misure** e i
+      **guasti**: le tabelle e le funzioni ci sono nel file ma non nel database,
+      quindi le due sezioni nuove del pannello dicono "funzione non ancora
+      installata" e le segnalazioni di guasto ricevono un 404 (verificato: non
+      rompono niente, si perdono). Finché non lo esegui, continui a non sapere
+      come si gioca e a non sapere se il gioco si rompe.
 - [ ] **Rieseguire `supabase/schema.sql`**: aggiunge la colonna `tipi_inviati` a
       `push_stato` (serve alle notifiche da mandare una volta sola), la chiave di
       configurazione `notifiche_obbligatorie` e la funzione
@@ -188,6 +194,23 @@ cancellazione dell'account, con doppia conferma.
       "Rigioca" c'era più di un secondo di animazione.
 - [x] ~~Vibrazione~~ — 24 ms alla morte. Solo Android: su iOS il web non ha
       vibrazione, e non è una dimenticanza nostra.
+- [x] ~~Segnalazione dei guasti~~ — `js/guasti.js` cattura `error` e
+      `unhandledrejection` e li manda a una funzione del database. Aggrega per
+      **tipo** e non per occorrenza, quindi la tabella non cresce quando un
+      guasto si ripete mille volte, e i numeri variabili (righe, indirizzi)
+      vengono normalizzati a `#` per non creare tipi nuovi. Tre difese contro
+      l'inondazione: 8 segnalazioni per sessione, deduplicazione in memoria,
+      coperchio a 500 tipi distinti sul database. Degli indirizzi va solo il nome
+      del file: i parametri sono il posto in cui i dati personali finiscono per
+      sbaglio. Verificato: 3 segnalazioni su 4 spedite (la ripetuta ignorata),
+      limite di sessione rispettato, e con la funzione mancante il 404 non
+      disturba nessuno.
+- [x] ~~Misure nel pannello admin~~ — sezione "Come si gioca davvero": partite e
+      giocatori a 7 giorni, punteggio medio e **mediano**, durata media, battiti
+      per punto, quota di partite finite prima del punto 5, e un istogramma delle
+      fasce di punteggio a 30 giorni. Quest'ultimo risponde alla domanda che
+      serve per tarare la difficoltà — *dove* si muore — a cui la media non
+      risponde. Tutto da `games`, che era già pieno.
 - [x] ~~Pilota automatico (`scripts/pilota.js`)~~ — il collaudo usava un tap a
       cadenza fissa che moriva prima del primo tronco: un test di determinismo
       su 1,9 secondi senza un punto segnato non provava niente. Ora gioca

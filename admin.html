@@ -66,6 +66,22 @@
   .numero b { display: block; font-size: 24px; font-weight: 800; }
   .numero span { font-size: 11px; font-weight: 700; color: var(--soffuso); text-transform: uppercase; letter-spacing: 0.4px; }
 
+  /* Istogramma delle fasce di punteggio: barre orizzontali, perché le
+     etichette sono testo ("40-59") e in verticale non si leggerebbero. */
+  .istogramma { display: flex; flex-direction: column; gap: 5px; }
+  .barra-fascia { display: grid; grid-template-columns: 58px 1fr 62px; align-items: center; gap: 10px; font-size: 13px; }
+  .barra-fascia .etichetta { font-weight: 700; color: var(--soffuso); text-align: right; }
+  .barra-fascia .traccia { height: 20px; border-radius: 6px; background: rgba(43,33,24,0.07); overflow: hidden; }
+  .barra-fascia .riempi { height: 100%; border-radius: 6px; background: linear-gradient(90deg, #ffd569, #e8a01a); min-width: 2px; }
+  .barra-fascia .valore { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  /* Guasti: il messaggio in monospazio, perché è testo di macchina */
+  .guasto { padding: 11px 12px; border-radius: 13px; background: rgba(43,33,24,0.04); margin-bottom: 6px; }
+  .guasto-testa { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .guasto b { font-family: ui-monospace, Menlo, monospace; font-size: 13px; font-weight: 700; word-break: break-word; }
+  .guasto .conteggio { flex: 0 0 auto; font-size: 12px; font-weight: 800; color: #a8221b; }
+  .guasto .dettaglio { font-size: 12px; color: var(--soffuso); margin-top: 4px; }
+
   ul { list-style: none; margin: 0; padding: 0; }
   .lista { border-radius: 20px; background: var(--carta); box-shadow: var(--ombra); padding: 8px; }
   li { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 13px; }
@@ -151,6 +167,28 @@
 
     <h2>Numeri</h2>
     <div id="numeri" class="numeri"></div>
+
+    <h2>Come si gioca davvero</h2>
+    <div id="misure" class="numeri"></div>
+    <div class="carta" style="margin-top:10px">
+      <p class="chi-sei" style="margin:0 0 10px">
+        Dove finiscono le partite, ultimi 30 giorni. È la domanda che serve per
+        tarare la difficoltà: la media da sola non la risponde.
+      </p>
+      <div id="distribuzione" class="istogramma"></div>
+    </div>
+
+    <h2>Guasti</h2>
+    <div class="carta">
+      <p class="chi-sei" style="margin:0 0 10px">
+        Una riga per <b>tipo</b> di errore, non per volta che è capitato. Se qui è
+        vuoto, il gioco non si è rotto per nessuno — oppure la funzione non è
+        ancora installata.
+      </p>
+      <div id="errori"></div>
+      <div class="barra"><button id="pulisci-errori" class="piatto" type="button">Svuota l'elenco</button></div>
+      <p id="errori-esito" class="esito nascosto"></p>
+    </div>
 
     <h2>Configurazione</h2>
     <div class="carta">
@@ -269,6 +307,6 @@
   </section>
 
 </main>
-<script type="module" src="js/admin.js?v=13"></script>
+<script type="module" src="js/admin.js?v=20"></script>
 </body>
 </html>

@@ -199,6 +199,8 @@ async function aggiorna() {
   $('notifiche-obbligatorie').checked = (conf.notifiche_obbligatorie || 'si') === 'si';
 
   riempiPush();
+  riempiMisure();
+  riempiErrori();
 
   const righe = gio.data || [];
   $('lista').innerHTML = righe.length ? righe.map((r) => `
@@ -400,6 +402,7 @@ if (!ONLINE) {
   $('esci').addEventListener('click', esci);
   $('salva').addEventListener('click', salvaConfig);
   $('ricarica').addEventListener('click', aggiorna);
+  $('pulisci-errori').addEventListener('click', pulisciErrori);
   $('prova-email').addEventListener('click', provaEmail);
   $('accoda-annuncio').addEventListener('click', accodaAnnuncio);
 
@@ -408,4 +411,102 @@ if (!ONLINE) {
     const { data } = await c.auth.getSession();
     if (data && data.session) await dopoAccesso();
   });
+}
+
+
+// ------------------------------------------------------- come si gioca
+//
+// Tutto ricavato dalla tabella `games`, che submit_score() riempiva gia' da
+// tempo: i dati grezzi c'erano, mancava chi li leggesse. Se le funzioni non
+// sono ancora installate le sezioni restano vuote con una spiegazione, invece
+// di mostrare un guasto.
+async function riempiMisure() {
+  const c = await client();
+  const [m, d] = await Promise.all([c.rpc('admin_misure'), c.rpc('admin_distribuzione')]);
+
+  const box = $('misure');
+  if (m.error) {
+    box.innerHTML = `<p class="chi-sei">${fuggi(spiega(m.error))}</p>`;
+  } else {
+    const r = Array.isArray(m.data) ? m.data[0] : m.data;
+    box.innerHTML = [
+      [r.partite_7g ?? 0, 'partite 7 giorni'],
+      [r.giocatori_7g ?? 0, 'hanno giocato'],
+      [r.punteggio_medio ?? '\u2013', 'punteggio medio'],
+      [r.punteggio_mediano ?? '\u2013', 'mediano'],
+      [r.punteggio_max ?? '\u2013', 'migliore'],
+      [r.durata_media_s != null ? r.durata_media_s + 's' : '\u2013', 'durata media'],
+      [r.battiti_al_punto ?? '\u2013', 'battiti / punto'],
+      [r.morti_sotto_5 != null ? r.morti_sotto_5 + '%' : '\u2013', 'morti prima del 5'],
+    ].map(([v, k]) => `<div class="numero"><b>${v}</b><span>${k}</span></div>`).join('');
+  }
+
+  const graf = $('distribuzione');
+  if (d.error) {
+    graf.innerHTML = `<p class="chi-sei">${fuggi(spiega(d.error))}</p>`;
+    return;
+  }
+  const righe = d.data || [];
+  if (!righe.length) {
+    graf.innerHTML = '<p class="chi-sei">Nessuna partita negli ultimi 30 giorni.</p>';
+    return;
+  }
+  const totale = righe.reduce((a, r) => a + Number(r.partite), 0);
+  const massimo = Math.max(...righe.map((r) => Number(r.partite)));
+  graf.innerHTML = righe.map((r) => {
+    const n = Number(r.partite);
+    const perc = ((n / totale) * 100).toFixed(0);
+    return `<div class="barra-fascia">
+      <span class="etichetta">${fuggi(r.fascia)}</span>
+      <span class="traccia"><span class="riempi" style="width:${(n / massimo) * 100}%"></span></span>
+      <span class="valore">${n} \u00b7 ${perc}%</span>
+    </div>`;
+  }).join('');
+}
+
+// ------------------------------------------------------------- guasti
+async function riempiErrori() {
+  const c = await client();
+  const { data, error } = await c.rpc('admin_errori', { p_limit: 40 });
+  const box = $('errori');
+  if (error) {
+    box.innerHTML = `<p class="chi-sei">${fuggi(spiega(error))}</p>`;
+    return;
+  }
+  const righe = data || [];
+  if (!righe.length) {
+    box.innerHTML = '<p class="chi-sei">Nessun guasto segnalato. Buon segno.</p>';
+    return;
+  }
+  box.innerHTML = righe.map((r) => `
+    <div class="guasto">
+      <div class="guasto-testa">
+        <b>${fuggi(r.messaggio)}</b>
+        <span class="conteggio">\u00d7${r.occorrenze}</span>
+      </div>
+      <div class="dettaglio">
+        ${r.dove ? fuggi(r.dove) + ' \u00b7 ' : ''}versione ${fuggi(r.versione || '?')} \u00b7
+        ultimo ${data(r.ultimo)}
+        ${r.esempio_agente ? '<br>' + fuggi(String(r.esempio_agente).slice(0, 110)) : ''}
+      </div>
+    </div>`).join('');
+}
+
+async function pulisciErrori() {
+  if (!confirm('Svuotare l\'elenco dei guasti? Non si torna indietro.')) return;
+  const c = await client();
+  const { data, error } = await c.rpc('admin_pulisci_errori');
+  const e = $('errori-esito');
+  e.classList.remove('nascosto');
+  e.textContent = error ? spiega(error) : `Cancellati ${data} tipi di guasto.`;
+  if (!error) riempiErrori();
+}
+
+// Le funzioni non ancora installate rispondono con un 404 di PostgREST: va
+// detto in italiano, non con il messaggio del database.
+function spiega(error) {
+  const m = String((error && error.message) || error).toLowerCase();
+  if (m.includes('could not find') || m.includes('does not exist') || m.includes('404'))
+    return 'Funzione non ancora installata: esegui supabase/schema.sql aggiornato.';
+  return (error && error.message) || String(error);
 }

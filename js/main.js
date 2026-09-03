@@ -3,6 +3,10 @@ import { Game } from './game.js';
 import { initUI } from './ui.js';
 import { initAudio, setMuted } from './audio.js';
 import * as net from './net.js';
+import * as guasti from './guasti.js';
+
+// Prima di tutto il resto: se qualcosa si rompe più sotto, va saputo.
+guasti.ascolta();
 
 const canvas = document.getElementById('game');
 const renderer = new Renderer(canvas);
@@ -93,6 +97,7 @@ function frame(now) {
     if (!loggedError) {
       loggedError = true;
       console.error('errore nel frame', e);
+      guasti.segnala((e && e.message) || String(e), 'ciclo di gioco', e && e.stack);
     }
   }
 }

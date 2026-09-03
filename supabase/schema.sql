@@ -909,3 +909,196 @@ $$;
 
 revoke execute on function public.admin_push_riepilogo() from anon, public;
 grant  execute on function public.admin_push_riepilogo() to authenticated;
+
+
+-- =====================================================================
+--  MISURE E GUASTI
+--
+--  Aggiunte perché senza numeri ogni decisione di gioco è un'opinione: non si
+--  sapeva quanto durano le partite, dove si muore, quanti tornano. E se il
+--  gioco si rompeva sul telefono di qualcuno, l'errore finiva in una console
+--  che nessuno avrebbe mai aperto.
+-- =====================================================================
+
+-- ------------------------------------------------------ guasti del gioco
+--  Una riga per TIPO di errore, non per occorrenza. Cosi' la tabella non
+--  cresce all'infinito quando un guasto si ripete mille volte, e leggendola si
+--  vede subito quale problema colpisce di piu' invece di scorrere un registro.
+create table if not exists public.errori (
+  impronta       text primary key,     -- messaggio + punto, normalizzati
+  messaggio      text not null,
+  dove           text,
+  versione       text,
+  occorrenze     int  not null default 1,
+  primo          timestamptz not null default now(),
+  ultimo         timestamptz not null default now(),
+  esempio_stack  text,
+  esempio_agente text
+);
+
+create index if not exists errori_ultimo_idx on public.errori (ultimo desc);
+
+alter table public.errori enable row level security;
+-- Nessuna policy: né lettura né scrittura dirette. Si passa dalle due funzioni
+-- qui sotto, che girano coi privilegi del proprietario.
+
+--  Segnalazione di un guasto. Chiamabile anche da chi non ha fatto l'accesso,
+--  perché i guasti peggiori capitano proprio prima di entrare.
+--
+--  Le difese contro l'abuso sono tre, e stanno qui e non nel client: il client
+--  di un sito statico lo puo' leggere e riscrivere chiunque.
+--   1. i campi vengono troncati, quindi una riga non puo' pesare
+--   2. si aggrega per impronta, quindi ripetere lo stesso errore non aggiunge righe
+--   3. oltre 500 tipi distinti si smette di accettarne di nuovi
+create or replace function public.segnala_errore(
+  p_messaggio text,
+  p_dove      text default null,
+  p_stack     text default null,
+  p_versione  text default null,
+  p_agente    text default null
+)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_msg      text := left(coalesce(p_messaggio, ''), 300);
+  v_dove     text := left(coalesce(p_dove, ''), 200);
+  v_impronta text;
+  v_tipi     int;
+begin
+  if v_msg = '' then
+    return;
+  end if;
+  -- i numeri variabili (righe, colonne, indirizzi) non devono creare tipi nuovi
+  v_impronta := md5(regexp_replace(v_msg || '|' || v_dove, '[0-9]+', '#', 'g'));
+
+  select count(*) into v_tipi from public.errori;
+  if v_tipi >= 500 and not exists (select 1 from public.errori where impronta = v_impronta) then
+    return;   -- coperchio: si continua a contare i noti, non se ne aprono di nuovi
+  end if;
+
+  insert into public.errori (impronta, messaggio, dove, versione, esempio_stack, esempio_agente)
+  values (v_impronta, v_msg, v_dove, left(coalesce(p_versione, ''), 20),
+          left(coalesce(p_stack, ''), 2000), left(coalesce(p_agente, ''), 200))
+  on conflict (impronta) do update
+    set occorrenze = public.errori.occorrenze + 1,
+        ultimo     = now(),
+        versione   = excluded.versione;
+end;
+$$;
+
+grant execute on function public.segnala_errore(text, text, text, text, text) to anon, authenticated;
+
+--  Elenco per l'amministratore, dal piu' recente.
+create or replace function public.admin_errori(p_limit int default 50)
+returns table (
+  impronta text, messaggio text, dove text, versione text,
+  occorrenze int, primo timestamptz, ultimo timestamptz,
+  esempio_stack text, esempio_agente text
+)
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'non autorizzato';
+  end if;
+  return query
+    select e.impronta, e.messaggio, e.dove, e.versione, e.occorrenze,
+           e.primo, e.ultimo, e.esempio_stack, e.esempio_agente
+    from public.errori e
+    order by e.ultimo desc
+    limit greatest(1, least(coalesce(p_limit, 50), 200));
+end;
+$$;
+
+create or replace function public.admin_pulisci_errori()
+returns int
+language plpgsql
+security definer set search_path = public
+as $$
+declare v_n int;
+begin
+  if not public.is_admin() then
+    raise exception 'non autorizzato';
+  end if;
+  delete from public.errori;
+  get diagnostics v_n = row_count;
+  return v_n;
+end;
+$$;
+
+-- ------------------------------------------------------------- misure
+--  Come si gioca davvero. Tutto ricavato da `games`, che submit_score()
+--  riempie gia' da tempo: i dati grezzi c'erano, mancava chi li leggesse.
+create or replace function public.admin_misure()
+returns table (
+  partite_7g        bigint,
+  giocatori_7g      int,
+  punteggio_medio   numeric,
+  punteggio_mediano int,
+  punteggio_max     int,
+  durata_media_s    numeric,
+  battiti_al_punto  numeric,
+  morti_sotto_5     numeric   -- quota di partite finite prima del punto 5
+)
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'non autorizzato';
+  end if;
+  return query
+  with recenti as (
+    select * from public.games where created_at > now() - interval '7 days'
+  )
+  select
+    (select count(*) from recenti),
+    (select count(distinct user_id)::int from recenti),
+    (select round(avg(score)::numeric, 1) from recenti),
+    (select percentile_disc(0.5) within group (order by score)::int from recenti),
+    (select max(score) from recenti),
+    (select round((avg(duration_ms) / 1000.0)::numeric, 1) from recenti),
+    (select round((sum(flaps)::numeric / nullif(sum(score), 0)), 2) from recenti),
+    (select round(100.0 * count(*) filter (where score < 5) / nullif(count(*), 0), 1) from recenti);
+end;
+$$;
+
+--  Distribuzione dei punteggi a fasce: dice DOVE si muore, che e' la domanda
+--  che serve per tarare la difficolta'. La media da sola non la risponde.
+create or replace function public.admin_distribuzione()
+returns table (fascia text, partite bigint, ordine int)
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'non autorizzato';
+  end if;
+  return query
+  with recenti as (
+    select score from public.games where created_at > now() - interval '30 days'
+  ), fasce as (
+    select case
+      when score < 5   then '0-4'
+      when score < 10  then '5-9'
+      when score < 20  then '10-19'
+      when score < 30  then '20-29'
+      when score < 40  then '30-39'
+      when score < 60  then '40-59'
+      when score < 100 then '60-99'
+      else '100+'
+    end as f,
+    case
+      when score < 5   then 1 when score < 10  then 2
+      when score < 20  then 3 when score < 30  then 4
+      when score < 40  then 5 when score < 60  then 6
+      when score < 100 then 7 else 8
+    end as o
+    from recenti
+  )
+  select f, count(*), o from fasce group by f, o order by o;
+end;
+$$;
