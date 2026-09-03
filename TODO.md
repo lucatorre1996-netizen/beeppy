@@ -8,8 +8,11 @@ Ordinate per urgenza: la P0 blocca l'invito agli amici, il resto no.
 ## P0 — prima di far entrare gente
 
 - [ ] **Rieseguire `supabase/schema.sql`**: aggiunge la colonna `tipi_inviati` a
-      `push_stato` (serve alle notifiche da mandare una volta sola) e la chiave di
-      configurazione `notifiche_obbligatorie`.
+      `push_stato` (serve alle notifiche da mandare una volta sola), la chiave di
+      configurazione `notifiche_obbligatorie` e la funzione
+      `leaderboard_settimana()` della classifica a sette giorni. Finché non lo
+      esegui, la linguetta "Ultimi 7 giorni" semplicemente non compare: nessuno
+      vede un errore.
 
 - [x] ~~Cancellare l'account di collaudo `verifica_prod`~~ — fatto.
 - [ ] **Rieseguire `supabase/schema.sql`.** Una parte è già stata eseguita (le
@@ -153,10 +156,18 @@ cancellazione dell'account, con doppia conferma.
       byte scaricati): basso, arpeggio nella stessa scala pentatonica dei suoni di
       punto, e tempo che accelera con la difficoltà. Serve un secondo interruttore
       separato da quello degli effetti, perché la musica stanca prima.
-- [ ] Ritoccare la fine partita: mostrare anche il **migliore in assoluto** e
-      quanto manca per superare chi ti precede in classifica.
-- [ ] Classifica **settimanale** oltre a quella di sempre: dà una speranza a chi
-      arriva dopo, quando i record in cima saranno alti.
+- [x] ~~Ritoccare la fine partita~~ — fatta: sotto al punteggio compaiono il
+      **migliore in assoluto** e la riga "ti mancano N punti per superare X",
+      calcolati dalla stessa lettura della classifica che serviva già per la
+      posizione, quindi senza una richiesta in più. La riga si scrive solo con i
+      numeri che il server ha accettato: è quella che fa premere "Rigioca", e un
+      numero sbagliato lì vale meno di nessun numero.
+- [x] ~~Classifica **settimanale**~~ — fatta, come seconda linguetta accanto a
+      quella di sempre. Passa da `leaderboard_settimana()` e non da una vista
+      perché lo storico delle partite resta leggibile da ciascuno solo per le
+      proprie righe; la funzione restituisce nickname e punteggio, cioè quello
+      che la classifica di sempre mostra già. **Va eseguito lo SQL** perché
+      appaia, e si popola con le partite giocate da lì in avanti.
 
 ## P2 — se e quando si va sugli store
 
@@ -219,8 +230,10 @@ Appunti da rileggere prima di dare la colpa al codice.
 
 ## Piccolezze
 
-- [ ] La scheda profilo è diventata lunga (991 px di contenuto): ora scorre, ma
-      varrebbe la pena dividerla, per esempio con i dati personali dietro un
-      "Modifica" invece che sempre aperti.
+- [x] ~~La scheda profilo è diventata lunga (991 px di contenuto)~~ — fatta: i
+      dati personali stanno dentro un `<details>` chiuso, con l'email riassunta
+      nel titolo. Misurato: 766 px aperto, 459 px chiuso. Si apre da solo se
+      l'email manca, perché è l'unico campo obbligatorio, e non si richiude
+      subito dopo un salvataggio, altrimenti nasconderebbe il "Dati salvati.".
 
 - [x] ~~Il messaggio d'errore non azzerato dopo una registrazione riuscita~~ — fatto.

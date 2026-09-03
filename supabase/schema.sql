@@ -248,6 +248,47 @@ where s.best_score > 0;
 revoke select on public.leaderboard from anon;
 grant  select on public.leaderboard to authenticated;
 
+-- ------------------------------------------------- classifica settimanale
+--  Il meglio di ciascuno negli ultimi sette giorni. Serve a dare una speranza
+--  a chi arriva dopo: quando i record di sempre saranno alti, una classifica
+--  che riparte è l'unica in cui un nuovo iscritto può ancora arrivare primo.
+--
+--  Perche' una funzione e non una vista: le partite in `games` sono leggibili
+--  da ciascuno solo per le proprie righe (e cosi' deve restare, sono uno
+--  storico personale). Una vista con security_invoker mostrerebbe a ognuno
+--  soltanto se stesso. Questa funzione gira con i privilegi del proprietario e
+--  restituisce esattamente le stesse informazioni della classifica di sempre —
+--  nickname e punteggio — quindi non svela niente di nuovo.
+create or replace function public.leaderboard_settimana(p_limit int default 50)
+returns table (pos bigint, nickname text, best_score int, user_id uuid, avatar_at timestamptz)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  with meglio as (
+    select g.user_id, max(g.score) as best_score, min(g.created_at) as quando
+    from public.games g
+    where g.created_at >= now() - interval '7 days'
+      and g.score > 0
+    group by g.user_id
+  )
+  select
+    row_number() over (order by m.best_score desc, m.quando asc) as pos,
+    p.nickname,
+    m.best_score,
+    m.user_id,
+    p.avatar_at
+  from meglio m
+  join public.profiles p on p.id = m.user_id
+  order by pos
+  limit greatest(1, least(coalesce(p_limit, 50), 100));
+$$;
+
+-- Come la classifica di sempre: riservata a chi ha un account.
+revoke all on function public.leaderboard_settimana(int) from public, anon;
+grant execute on function public.leaderboard_settimana(int) to authenticated;
+
 -- ------------------------------------- nickname utilizzabile? (pre-controllo)
 --  Ritorna 'ok', 'occupato' oppure 'non_ammesso', così la schermata di
 --  registrazione può dire subito qual è il problema invece di far fallire

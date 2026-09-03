@@ -99,7 +99,12 @@
       <div class="over-rows">
         <div><span>Record personale</span><b id="over-best">0</b></div>
         <div><span>Posizione</span><b id="over-rank">-</b></div>
+        <div id="over-top-row" class="hidden"><span>Migliore in assoluto</span><b id="over-top">-</b></div>
       </div>
+      <!-- Quanto manca per superare chi ti precede: è la riga che fa premere
+           "Rigioca". Compare solo quando il numero è vero, cioè quando il
+           punteggio è stato accettato dal server. -->
+      <p id="over-inseguimento" class="inseguimento hidden"></p>
       <p id="over-status" class="note"></p>
       <div id="invito-notifiche" class="invito hidden">
         <p>Ti avviso quando qualcuno ti supera in classifica?</p>
@@ -204,9 +209,15 @@
   <div id="modal-lb" class="modal">
     <div class="modal-card">
       <header>
-        <h2>Classifica mondiale</h2>
+        <h2>Classifica</h2>
         <button class="x" data-close="modal-lb" aria-label="Chiudi">✕</button>
       </header>
+      <!-- La linguetta settimanale sparisce se la funzione del database non
+           c'è ancora: meglio una classifica sola che una scheda che dà errore. -->
+      <div id="lb-tabs" class="tabs hidden">
+        <button id="tab-lb-sempre" class="tab is-on" type="button">Di sempre</button>
+        <button id="tab-lb-sett" class="tab" type="button">Ultimi 7 giorni</button>
+      </div>
       <ol id="lb-list" class="lb"></ol>
       <p id="lb-note" class="note"></p>
     </div>
@@ -347,8 +358,14 @@
 
         <div id="profilo-traguardi" class="traguardi"></div>
 
-        <div class="profilo-dati">
-          <span class="stat-k">I tuoi dati</span>
+        <!-- I dati personali stanno chiusi: la scheda profilo era diventata
+             lunga quasi 1000 px e questi campi si toccano una volta sola. Si
+             aprono da soli se manca l'email, che invece è obbligatoria. -->
+        <details id="profilo-dati" class="profilo-dati">
+          <summary>
+            <span class="stat-k">I tuoi dati</span>
+            <span id="dati-riassunto" class="dati-riassunto"></span>
+          </summary>
           <form id="dati-form">
             <label for="d-email">Email <span class="obbligatorio">obbligatoria</span></label>
             <input id="d-email" type="email" inputmode="email" autocapitalize="none"
@@ -369,7 +386,7 @@
             <p id="dati-esito" class="note"></p>
             <button id="dati-salva" class="btn" type="submit">Salva i dati</button>
           </form>
-        </div>
+        </details>
 
         <div id="profilo-storico" class="storico hidden">
           <span class="stat-k">Ultime partite</span>
@@ -487,23 +504,23 @@
 <script type="importmap">
 {
   "imports": {
-      "./js/main.js": "./js/main.js?v=13",
-      "./js/game.js": "./js/game.js?v=13",
-      "./js/sim.js": "./js/sim.js?v=13",
-      "./js/render.js": "./js/render.js?v=13",
-      "./js/palette.js": "./js/palette.js?v=13",
-      "./js/constants.js": "./js/constants.js?v=13",
-      "./js/audio.js": "./js/audio.js?v=13",
-      "./js/ui.js": "./js/ui.js?v=13",
-      "./js/net.js": "./js/net.js?v=13",
-      "./js/rng.js": "./js/rng.js?v=13",
-      "./js/config.js": "./js/config.js?v=13",
-      "./js/install.js": "./js/install.js?v=13",
-      "./js/biometric.js": "./js/biometric.js?v=13",
-      "./js/push.js": "./js/push.js?v=13"
+      "./js/main.js": "./js/main.js?v=14",
+      "./js/game.js": "./js/game.js?v=14",
+      "./js/sim.js": "./js/sim.js?v=14",
+      "./js/render.js": "./js/render.js?v=14",
+      "./js/palette.js": "./js/palette.js?v=14",
+      "./js/constants.js": "./js/constants.js?v=14",
+      "./js/audio.js": "./js/audio.js?v=14",
+      "./js/ui.js": "./js/ui.js?v=14",
+      "./js/net.js": "./js/net.js?v=14",
+      "./js/rng.js": "./js/rng.js?v=14",
+      "./js/config.js": "./js/config.js?v=14",
+      "./js/install.js": "./js/install.js?v=14",
+      "./js/biometric.js": "./js/biometric.js?v=14",
+      "./js/push.js": "./js/push.js?v=14"
   }
 }
 </script>
-<script type="module" src="js/main.js?v=13"></script>
+<script type="module" src="js/main.js?v=14"></script>
 </body>
 </html>

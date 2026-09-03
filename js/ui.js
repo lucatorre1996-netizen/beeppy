@@ -104,6 +104,9 @@ export function initUI(g) {
     err.classList.toggle('hidden', !problema);
   });
 
+  $('tab-lb-sempre').addEventListener('click', () => cambiaTabClassifica('sempre'));
+  $('tab-lb-sett').addEventListener('click', () => cambiaTabClassifica('settimana'));
+
   $('btn-delete').addEventListener('click', cancellaAccount);
   $('link-recupero').addEventListener('click', (e) => { e.preventDefault(); mostraRecupero(); });
   $('btn-recupero-annulla').addEventListener('click', () => { pannello = 'form'; openAuth(); });
@@ -256,6 +259,8 @@ async function onGameOver(res) {
   $('over-score').textContent = res.score;
   $('over-best').textContent = Math.max(net.state.best, res.score);
   $('over-rank').textContent = '-';
+  $('over-top-row').classList.add('hidden');
+  $('over-inseguimento').classList.add('hidden');
   $('record-badge').classList.add('hidden');
   $('over-status').textContent = net.state.user ? 'Invio del punteggio...' : '';
 
@@ -276,21 +281,64 @@ async function onGameOver(res) {
     $('over-status').textContent = 'Punteggio non registrato: troppi invii ravvicinati.';
   } else {
     $('over-status').textContent = 'Punteggio inviato.';
-    const pos = await myPosition();
-    $('over-rank').textContent = pos;
+    await mostraContestoClassifica();
   }
   refreshMenu();
 }
 
-async function myPosition() {
-  if (!net.state.user) return '-';
+// Posizione, migliore in assoluto e distanza da chi ti precede: tutto da una
+// sola lettura della classifica, perché sono tre risposte alla stessa domanda.
+// La riga dell'inseguimento è quella che fa premere "Rigioca", quindi deve
+// essere esatta: si scrive solo con i numeri che il server ha accettato.
+async function mostraContestoClassifica() {
+  const rank = $('over-rank');
+  const topRow = $('over-top-row');
+  const caccia = $('over-inseguimento');
+  topRow.classList.add('hidden');
+  caccia.classList.add('hidden');
+  if (!net.state.user) { rank.textContent = '-'; return; }
+
   const { ok, rows } = await net.leaderboard(100);
-  if (!ok) return '-';
+  if (!ok || !rows.length) { rank.textContent = '-'; return; }
+
+  $('over-top').textContent = rows[0].best_score;
+  topRow.classList.remove('hidden');
+
   const i = rows.findIndex((r) => r.user_id === net.state.user.id);
-  return i >= 0 ? `#${rows[i].pos}` : 'oltre la 100a';
+  if (i < 0) {
+    // fuori dai primi cento: la posizione esatta non la conosciamo
+    rank.textContent = 'oltre la 100a';
+    caccia.innerHTML = `In testa c'è <b>${escapeHtml(rows[0].nickname)}</b> con ${rows[0].best_score}.`;
+    caccia.classList.remove('hidden');
+    return;
+  }
+
+  rank.textContent = `#${rows[i].pos}`;
+  if (i === 0) {
+    caccia.innerHTML = rows.length > 1
+      ? `Sei in testa, ${rows[0].best_score - rows[1].best_score} punti sopra <b>${escapeHtml(rows[1].nickname)}</b>.`
+      : 'Sei in testa alla classifica.';
+  } else {
+    const sopra = rows[i - 1];
+    // a pari punti la differenza è zero, ma per passarlo serve comunque un punto
+    const mancano = Math.max(1, sopra.best_score - rows[i].best_score + 1);
+    caccia.innerHTML = `Ti mancano <b>${mancano}</b> ${mancano === 1 ? 'punto' : 'punti'} ` +
+                       `per superare <b>${escapeHtml(sopra.nickname)}</b>.`;
+  }
+  caccia.classList.remove('hidden');
 }
 
 // ---------------------------------------------------------------- classifica
+// Due classifiche: quella di sempre e quella degli ultimi sette giorni. La
+// seconda esiste per chi arriva dopo — quando in cima ci saranno record alti,
+// una classifica che riparte è l'unica in cui un nuovo iscritto può ancora
+// sperare di arrivare primo.
+let lbTab = 'sempre';
+// Diventa vero se il database non ha ancora la funzione settimanale: da quel
+// momento la linguetta non ricompare più, invece di riapparire a ogni apertura
+// per poi sparire di nuovo al primo clic.
+let settimanaAssente = false;
+
 async function openLeaderboard() {
   await net.whenReady();
   // La classifica è riservata a chi ha un account. Non è un capriccio
@@ -305,22 +353,45 @@ async function openLeaderboard() {
   }
 
   openModal('modal-lb');
+  await mostraClassifica();
+}
+
+async function mostraClassifica() {
   const list = $('lb-list');
   const note = $('lb-note');
+  const tabs = $('lb-tabs');
+  const settimana = lbTab === 'settimana';
   list.innerHTML = '<li class="lb-empty">Carico...</li>';
   note.textContent = '';
+  $('tab-lb-sempre').classList.toggle('is-on', !settimana);
+  $('tab-lb-sett').classList.toggle('is-on', settimana);
 
   if (!net.state.online) {
+    tabs.classList.add('hidden');
     list.innerHTML = `<li class="lb-empty">Classifica online non configurata.<br>Il tuo record locale: <b>${net.localBest()}</b></li>`;
     return;
   }
-  const { ok, rows, error } = await net.leaderboard(50);
-  if (!ok) {
-    list.innerHTML = `<li class="lb-empty">${error}</li>`;
+
+  const out = settimana ? await net.leaderboardSettimana(50) : await net.leaderboard(50);
+
+  // Funzione non ancora installata sul database: invece di mostrare un guasto
+  // si torna alla classifica di sempre e si nasconde la linguetta.
+  if (!out.ok && out.assente && settimana) {
+    settimanaAssente = true;
+    lbTab = 'sempre';
+    return mostraClassifica();
+  }
+  if (!out.ok) {
+    list.innerHTML = `<li class="lb-empty">${escapeHtml(out.error)}</li>`;
     return;
   }
+  tabs.classList.toggle('hidden', settimanaAssente);
+
+  const rows = out.rows;
   if (!rows.length) {
-    list.innerHTML = '<li class="lb-empty">Nessun punteggio ancora.<br>Il primo record puoi essere tu.</li>';
+    list.innerHTML = settimana
+      ? '<li class="lb-empty">Questa settimana non ha ancora giocato nessuno.<br>Il primo posto è libero.</li>'
+      : '<li class="lb-empty">Nessun punteggio ancora.<br>Il primo record puoi essere tu.</li>';
     return;
   }
   const medal = ['🥇', '🥈', '🥉'];
@@ -335,11 +406,23 @@ async function openLeaderboard() {
              `<span class="pts">${r.best_score}</span></li>`;
     })
     .join('');
-  if (net.state.user && !rows.some((r) => r.user_id === net.state.user.id)) {
+
+  const dentro = net.state.user && rows.some((r) => r.user_id === net.state.user.id);
+  if (settimana && !dentro) {
+    note.textContent = 'Non compari qui: conta la partita migliore degli ultimi sette giorni.';
+  } else if (settimana) {
+    note.textContent = 'Conta la partita migliore degli ultimi sette giorni.';
+  } else if (net.state.user && !dentro) {
     note.textContent = 'Non sei ancora fra i primi 50.';
   } else if (!net.state.user) {
     note.textContent = 'Accedi per comparire in classifica.';
   }
+}
+
+function cambiaTabClassifica(quale) {
+  if (lbTab === quale) return;
+  lbTab = quale;
+  mostraClassifica();
 }
 
 function escapeHtml(s) {
@@ -1058,12 +1141,33 @@ async function riempiDati() {
   if (!ok || !dati) {
     // succede se lo schema aggiornato non è ancora stato eseguito
     esito.textContent = '';
+    riassumiDati('');
     return;
   }
   $('d-email').value = dati.email || '';
   $('d-nome').value = dati.nome || '';
   $('d-cognome').value = dati.cognome || '';
   $('d-telefono').value = dati.telefono || '';
+  riassumiDati(dati.email || '');
+}
+
+// La sezione resta chiusa se i dati ci sono già, e mostra l'email nel titolo
+// così si vede a colpo d'occhio che è a posto. Se manca si apre da sola: è
+// l'unico dato obbligatorio, nasconderlo dietro un clic sarebbe un dispetto.
+// `chiudi` è falso dopo un salvataggio: richiudere la sezione nasconderebbe il
+// "Dati salvati." un istante dopo averlo scritto.
+function riassumiDati(email, chiudi = true) {
+  const box = $('profilo-dati');
+  const riassunto = $('dati-riassunto');
+  if (email) {
+    riassunto.textContent = email;
+    riassunto.classList.remove('manca');
+    if (chiudi) box.open = false;
+  } else {
+    riassunto.textContent = 'manca l\'email';
+    riassunto.classList.add('manca');
+    box.open = true;
+  }
 }
 
 async function salvaDati(e) {
@@ -1081,6 +1185,7 @@ async function salvaDati(e) {
   b.disabled = false;
   b.textContent = 'Salva i dati';
   esito.textContent = out.ok ? 'Dati salvati.' : out.error;
+  if (out.ok) riassumiDati($('d-email').value.trim(), false);
 }
 
 // Ultime partite: un grafico a barre e l'elenco. Se la tabella non c'è ancora

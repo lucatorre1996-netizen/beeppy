@@ -820,3 +820,25 @@ export async function leaderboard(limit = 50) {
     return { ok: false, error: human(e), rows: [] };
   }
 }
+
+// Classifica degli ultimi sette giorni. Passa da una funzione del database
+// perché lo storico delle partite è leggibile da ciascuno solo per le proprie
+// righe; la funzione gira coi privilegi del proprietario e restituisce le
+// stesse informazioni della classifica di sempre.
+//
+// Se la funzione non è ancora installata torna `assente: true` invece di un
+// errore: l'interfaccia nasconde la linguetta e nessuno vede un guasto.
+export async function leaderboardSettimana(limit = 50) {
+  if (!ONLINE) return { ok: false, error: 'offline', rows: [] };
+  try {
+    const c = await client();
+    const { data, error } = await c.rpc('leaderboard_settimana', { p_limit: limit });
+    if (error) throw error;
+    return { ok: true, rows: data || [] };
+  } catch (e) {
+    const m = String((e && e.message) || e).toLowerCase();
+    if (m.includes('could not find') || m.includes('does not exist') || m.includes('404'))
+      return { ok: false, assente: true, error: 'Classifica settimanale non ancora installata.', rows: [] };
+    return { ok: false, error: human(e), rows: [] };
+  }
+}
