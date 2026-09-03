@@ -115,6 +115,7 @@ export function initUI(g) {
   $('email-form').addEventListener('submit', salvaEmailMancante);
   $('notifiche-attiva').addEventListener('click', () => rispostaNotifiche(true));
   $('notifiche-dopo').addEventListener('click', () => rispostaNotifiche(false));
+  $('notifiche-riprova').addEventListener('click', ricontrollaNotifiche);
   $('notifiche-si').addEventListener('click', attivaNotifiche);
   $('notifiche-no').addEventListener('click', () => {
     $('invito-notifiche').classList.add('hidden');
@@ -211,10 +212,16 @@ async function startGame() {
   }
 
   // Consenso alle notifiche: si chiede prima di giocare, una volta per sessione.
-  if (net.state.user && !notificheChieste && await deveChiedereNotifiche()) {
+  if (net.state.user && !notificheChieste) {
+    const stato = await statoNotifiche();
+    if (stato) {
+      // Chi deve solo riaccenderle dalle impostazioni va rifermato a ogni
+      // tentativo: "una volta per sessione" varrebbe come permesso di passare.
+      if (stato.modo !== 'istruzioni') notificheChieste = true;
+      await mostraChiediNotifiche(stato);
+      return;
+    }
     notificheChieste = true;
-    await mostraChiediNotifiche();
-    return;
   }
 
   if (!net.state.user) {
@@ -334,10 +341,16 @@ async function mostraContestoClassifica() {
 // una classifica che riparte è l'unica in cui un nuovo iscritto può ancora
 // sperare di arrivare primo.
 let lbTab = 'sempre';
-// Diventa vero se il database non ha ancora la funzione settimanale: da quel
-// momento la linguetta non ricompare più, invece di riapparire a ogni apertura
-// per poi sparire di nuovo al primo clic.
-let settimanaAssente = false;
+
+// La linguetta settimanale compare solo dopo che il database ha dimostrato di
+// saper rispondere. La prima versione la mostrava sempre e la toglieva al primo
+// clic se la funzione mancava: chi la premeva se la vedeva sparire sotto il
+// dito, che è il modo peggiore di dire "questa cosa non c'è". Ora la verifica
+// parte insieme alla classifica di sempre, alla prima apertura, quindi non
+// aggiunge attesa; e la risposta si tiene da parte, così il primo clic sulla
+// linguetta non richiede niente al server.
+let settimanaOk = null;      // null = ancora da verificare
+let settimanaPronta = null;  // risposta della verifica, buona per un clic solo
 
 async function openLeaderboard() {
   await net.whenReady();
@@ -372,20 +385,33 @@ async function mostraClassifica() {
     return;
   }
 
-  const out = settimana ? await net.leaderboardSettimana(50) : await net.leaderboard(50);
-
-  // Funzione non ancora installata sul database: invece di mostrare un guasto
-  // si torna alla classifica di sempre e si nasconde la linguetta.
-  if (!out.ok && out.assente && settimana) {
-    settimanaAssente = true;
-    lbTab = 'sempre';
-    return mostraClassifica();
+  let out;
+  if (settimana) {
+    out = settimanaPronta || await net.leaderboardSettimana(50);
+    settimanaPronta = null;   // vale una volta sola, poi si torna a chiedere
+  } else if (settimanaOk === null) {
+    // Prima apertura: le due richieste partono insieme. Quella settimanale
+    // serve a sapere se la linguetta va mostrata, e la sua risposta non si
+    // butta via.
+    const [sempre, sett] = await Promise.all([
+      net.leaderboard(50),
+      net.leaderboardSettimana(50),
+    ]);
+    settimanaOk = sett.ok;
+    settimanaPronta = sett.ok ? sett : null;
+    out = sempre;
+  } else {
+    out = await net.leaderboard(50);
   }
+
+  // La linguetta esiste solo se la funzione risponde. Finché lo SQL aggiornato
+  // non è stato eseguito, la classifica resta una sola e nessuno vede un guasto.
+  tabs.classList.toggle('hidden', settimanaOk !== true);
+
   if (!out.ok) {
     list.innerHTML = `<li class="lb-empty">${escapeHtml(out.error)}</li>`;
     return;
   }
-  tabs.classList.toggle('hidden', settimanaAssente);
 
   const rows = out.rows;
   if (!rows.length) {
@@ -572,6 +598,8 @@ function setAuthMode(mode) {
   $('tab-login').classList.toggle('is-on', mode === 'login');
   $('tab-signup').classList.toggle('is-on', mode === 'signup');
   $('campi-registrazione').classList.toggle('hidden', mode !== 'signup');
+  // La nota spiega cosa serve per registrarsi: a chi sta accedendo non serve
+  $('nota-signup').classList.toggle('hidden', mode !== 'signup');
   $('f-email').required = mode === 'signup';
   $('auth-submit').textContent = mode === 'login' ? 'Accedi' : 'Crea account';
   $('f-pass').setAttribute('autocomplete', mode === 'login' ? 'current-password' : 'new-password');
@@ -593,6 +621,11 @@ async function submitAuth(e) {
     elapsedMs: Date.now() - authOpenedAt,
   };
   const eraRegistrazione = authMode === 'signup';
+
+  // Le notifiche NON si chiedono qui. Registrarsi dev'essere una cosa sola:
+  // nickname, PIN, email. Il permesso arriva alla prima partita, dove la
+  // domanda si spiega da sé ("ti avviso quando ti superano") invece di
+  // presentarsi come un ostacolo in più dentro un modulo.
   const contatti = {
     email: $('f-email').value,
     nome: $('f-nome').value,
@@ -845,36 +878,71 @@ async function cancellaAccount() {
 
 // ------------------------------------------- consenso prima di giocare
 //
-// La schermata si mostra solo a chi PUÒ ancora decidere. Chi ha già negato il
-// permesso non la vede: il browser non riproporrebbe la finestra, quindi
-// sbarrargli la strada significherebbe escluderlo per sempre da un gioco a cui
-// è iscritto. Stessa cosa per chi apre da Safari senza aver installato Beeppy,
-// che su iPhone non può ricevere notifiche in nessun caso.
-async function deveChiedereNotifiche() {
-  if (!push.supportate()) return false;
-  if (push.permesso() !== 'default') return false;   // già deciso, in un senso o nell'altro
-  if (await push.giaIscritto()) return false;
-  return true;
-}
+// Chi non può ricevere notifiche in nessun caso passa sempre: iPhone aperto da
+// Safari senza aver installato Beeppy, browser senza push, pagina non sicura.
+// Non è un'indulgenza, è che non avrebbero modo di accettare nemmeno volendo.
+//
+// Chi invece ha già rifiutato non passa più, se l'obbligo è acceso: vede le
+// istruzioni per riaccenderle dalle impostazioni. Prima lo lasciavamo passare
+// perché il browser non ripropone la finestra dopo un "no", e un blocco sarebbe
+// stato definitivo. Con le istruzioni non lo è: la porta è chiusa ma la chiave
+// è appesa accanto.
+async function statoNotifiche() {
+  if (!push.supportate()) return null;
+  if (await push.giaIscritto()) return null;
 
-async function mostraChiediNotifiche() {
-  $('notifiche-esito').textContent = '';
+  const permesso = push.permesso();
+  if (permesso === 'granted') {
+    // permesso concesso ma iscrizione mancante: si rimedia senza disturbare
+    push.attiva().catch(() => { /* niente */ });
+    return null;
+  }
+
   let obbligatorie = false;
   try {
     const cfg = await net.leggiConfig();
-    obbligatorie = (cfg.notifiche_obbligatorie || 'no') === 'si';
+    obbligatorie = (cfg.notifiche_obbligatorie || 'si') === 'si';
   } catch (e) { /* in dubbio si lascia la via d'uscita */ }
-  $('notifiche-dopo').classList.toggle('hidden', obbligatorie);
+
+  if (permesso === 'denied') return obbligatorie ? { modo: 'istruzioni', obbligatorie } : null;
+  return { modo: 'chiedi', obbligatorie };
+}
+
+async function mostraChiediNotifiche(stato) {
+  const istruzioni = stato.modo === 'istruzioni';
+  $('notifiche-esito').textContent = '';
+  $('notifiche-attiva').classList.toggle('hidden', istruzioni);
+  $('notifiche-riprova').classList.toggle('hidden', !istruzioni);
+  $('notifiche-dopo').classList.toggle('hidden', stato.obbligatorie);
+  scriviIstruzioniNotifiche(istruzioni);
   showScreen('notifiche');
+}
+
+// Le istruzioni per riaccendere le notifiche dalle impostazioni, scritte per il
+// dispositivo che si ha in mano: "vai nelle impostazioni" è un consiglio che
+// non aiuta nessuno.
+function scriviIstruzioniNotifiche(mostra) {
+  const box = $('notifiche-istruzioni');
+  box.classList.toggle('hidden', !mostra);
+  if (!mostra) {
+    $('notifiche-titolo').textContent = 'Ti avviso quando ti superano';
+    $('notifiche-perche').textContent = 'Beeppy ti manda una notifica quando qualcuno ' +
+      'ti passa in classifica, e poco altro. Niente pubblicità, niente messaggi ' +
+      'inutili: puoi spegnerle quando vuoi dal tuo profilo.';
+    return;
+  }
+  const guida = push.comeRiattivare();
+  $('notifiche-titolo').textContent = 'Le notifiche sono spente';
+  $('notifiche-perche').textContent = 'Le avevi rifiutate, e da qui il browser non ' +
+    `può più chiedertelo. Si riaccendono dalle impostazioni di ${guida.dove}:`;
+  box.innerHTML = guida.passi.map((passo) => `<li>${escapeHtml(passo)}</li>`).join('');
 }
 
 async function rispostaNotifiche(attiva) {
   const btn = $('notifiche-attiva');
   const esito = $('notifiche-esito');
   if (!attiva) {
-    showScreen('none');
-    game.arm();
-    showScreen('ready');
+    giocaOra();
     return;
   }
   btn.disabled = true;
@@ -882,18 +950,37 @@ async function rispostaNotifiche(attiva) {
   const out = await push.attiva();
   btn.disabled = false;
   btn.textContent = 'Attiva le notifiche';
-  if (!out.ok) {
-    // Ha detto di no, o qualcosa è andato storto: si gioca lo stesso. Tenerlo
-    // fermo qui non servirebbe a niente, perché la finestra del permesso non
-    // ricomparirà più.
-    esito.textContent = out.error + ' Si gioca lo stesso.';
-    setTimeout(() => {
-      showScreen('none');
-      game.arm();
-      showScreen('ready');
-    }, 2200);
+  if (out.ok) {
+    giocaOra();
     return;
   }
+
+  // Ha detto di no. Se l'obbligo è acceso restiamo qui e gli mostriamo come
+  // rimediare, perché ora un modo c'è; altrimenti si gioca lo stesso, che è
+  // sempre stata la regola quando il consenso non è obbligatorio.
+  let obbligatorie = false;
+  try {
+    const cfg = await net.leggiConfig();
+    obbligatorie = (cfg.notifiche_obbligatorie || 'si') === 'si';
+  } catch (e) { /* in dubbio si lascia giocare */ }
+
+  if (obbligatorie && push.permesso() === 'denied') {
+    await mostraChiediNotifiche({ modo: 'istruzioni', obbligatorie: true });
+    return;
+  }
+  esito.textContent = out.error + (obbligatorie ? '' : ' Si gioca lo stesso.');
+  if (!obbligatorie) setTimeout(giocaOra, 2200);
+}
+
+// Il pulsante "Fatto, controlla" dopo un giro nelle impostazioni. Ricarica la
+// pagina invece di rileggere il permesso: su iPhone il cambiamento non arriva
+// alla pagina già aperta, e un controllo che risponde "ancora spente" a chi le
+// ha appena accese è peggio di nessun controllo.
+function ricontrollaNotifiche() {
+  location.reload();
+}
+
+function giocaOra() {
   showScreen('none');
   game.arm();
   showScreen('ready');

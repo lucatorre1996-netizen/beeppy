@@ -137,12 +137,23 @@ insert into public.app_config (chiave, valore) values
   -- disfare in dieci secondi: chi arriva dal browser interno di WhatsApp non
   -- può installare niente, e un blocco rigido lo perderesti per sempre.
   ('richiedi_installazione', 'no'),
-  -- 'si' toglie il "Più tardi" dalla schermata delle notifiche. Attenzione:
-  -- chi ha già rifiutato il permesso non può più concederlo dal browser, e chi
-  -- apre da Safari senza aver installato il gioco non può accettare affatto —
-  -- quelli passano comunque, altrimenti resterebbero chiusi fuori per sempre.
-  ('notifiche_obbligatorie', 'no')
+  -- 'si' toglie il "Più tardi" dalla schermata delle notifiche: si attivano
+  -- alla prima partita o non si gioca. Acceso di serie.
+  -- A chi ha già rifiutato non si sbarra la strada e basta: gli si mostrano le
+  -- istruzioni per riaccenderle dalle impostazioni, perché dopo un "no" il
+  -- browser non ripropone più la finestra e un blocco senza spiegazione
+  -- sarebbe definitivo. Passa senza consenso solo chi non potrebbe darlo
+  -- comunque: iPhone aperto da Safari senza aver installato il gioco.
+  ('notifiche_obbligatorie', 'si')
 on conflict (chiave) do nothing;
+
+-- Correzione voluta, non un effetto collaterale: la chiave esisteva già con
+-- valore 'no', che era il vecchio default e non una scelta. Le notifiche
+-- obbligatorie sono state chieste esplicitamente, quindi qui il valore viene
+-- portato a 'si'. Per tornare indietro basta l'interruttore nella pagina
+-- admin: questa riga non lo ripristina, agisce solo quando si riesegue il file.
+update public.app_config set valore = 'si', aggiornato = now()
+  where chiave = 'notifiche_obbligatorie' and valore is distinct from 'si';
 
 
 

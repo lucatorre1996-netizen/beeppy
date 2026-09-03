@@ -196,7 +196,7 @@ async function aggiorna() {
   $('annuncio').value = conf.annuncio || '';
   $('registrazioni').checked = (conf.registrazioni_aperte || 'si') === 'si';
   $('obbliga-installazione').checked = (conf.richiedi_installazione || 'no') === 'si';
-  $('notifiche-obbligatorie').checked = (conf.notifiche_obbligatorie || 'no') === 'si';
+  $('notifiche-obbligatorie').checked = (conf.notifiche_obbligatorie || 'si') === 'si';
 
   riempiPush();
 

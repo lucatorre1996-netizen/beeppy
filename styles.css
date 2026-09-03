@@ -380,7 +380,11 @@ code {
 #auth-logged .btn { width: 100%; margin-top: 10px; }
 
 #auth-form { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
-#auth-form label { font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+/* `display: block` non è pignoleria: le etichette dentro #campi-registrazione
+   non sono figlie del flex, quindi restavano in linea e "Telefono" finiva
+   accanto al suo campo invece che sopra. */
+#auth-form label { display: block; font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+#campi-registrazione input { width: 100%; }
 #auth-form input {
   min-height: 50px;
   margin-bottom: 6px;
@@ -646,6 +650,12 @@ code {
 .install-passi li:last-child { margin-bottom: 0; }
 .install-passi .btn { width: 100%; margin-top: 12px; }
 .install-passi svg { vertical-align: -3px; }
+
+/* Istruzioni passo-passo, usate sia nella schermata delle notifiche sia dentro
+   il messaggio d'errore della registrazione. */
+.istruzioni { margin: 6px 0 0; padding-left: 20px; text-align: left; }
+.istruzioni li { margin-bottom: 6px; font-size: 14px; font-weight: 600; line-height: 1.4; }
+.istruzioni li:last-child { margin-bottom: 0; }
 
 /* ------------------------------------------------ dati personali */
 .due-campi { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }

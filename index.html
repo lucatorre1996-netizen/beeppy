@@ -128,13 +128,18 @@
        significherebbe escluderlo per sempre da un gioco a cui è iscritto. -->
   <section id="screen-notifiche" class="screen">
     <span class="logo-bee" aria-hidden="true"></span>
-    <h2 class="install-titolo">Ti avviso quando ti superano</h2>
-    <p class="install-perche">Beeppy ti manda una notifica quando qualcuno ti passa
-       in classifica, e poco altro. Niente pubblicità, niente messaggi inutili: puoi
-       spegnerle quando vuoi dal tuo profilo.</p>
+    <h2 id="notifiche-titolo" class="install-titolo">Ti avviso quando ti superano</h2>
+    <p id="notifiche-perche" class="install-perche">Beeppy ti manda una notifica
+       quando qualcuno ti passa in classifica, e poco altro. Niente pubblicità,
+       niente messaggi inutili: puoi spegnerle quando vuoi dal tuo profilo.</p>
 
     <div class="install-passi">
+      <!-- Per chi ha già rifiutato: il browser non ripropone più la finestra,
+           quindi l'unica strada sono le impostazioni. Le istruzioni sono la
+           differenza fra un blocco e un vicolo cieco. -->
+      <ol id="notifiche-istruzioni" class="istruzioni hidden"></ol>
       <button id="notifiche-attiva" class="btn btn-primary" type="button">Attiva le notifiche</button>
+      <button id="notifiche-riprova" class="btn btn-primary hidden" type="button">Fatto, controlla</button>
       <button id="notifiche-dopo" class="btn btn-ghost" type="button">Più tardi</button>
       <p id="notifiche-esito" class="note"></p>
     </div>
@@ -284,10 +289,11 @@
           <p class="note">
              <a href="#" id="link-recupero">PIN dimenticato?</a>
           </p>
-          <p class="note">Serve solo un nickname e un PIN di almeno 4 cifre: nessuna email,
-             nessuna verifica. Il nickname è il nome che appare in classifica.
-             Dopo la registrazione ti diamo un <b>codice di recupero</b>: conservalo,
-             è l'unico modo per rientrare se dimentichi il PIN.
+          <p id="nota-signup" class="note hidden">Servono un nickname, un PIN di almeno
+             4 cifre e la tua email. Il nickname è il nome che appare in classifica;
+             nome, cognome e telefono sono facoltativi.
+             Subito dopo ti diamo un <b>codice di recupero</b>: conservalo, è quello
+             che ti fa rientrare se dimentichi il PIN.
              <a href="privacy.html" target="_blank" rel="noopener">Come trattiamo i tuoi dati</a>.</p>
         </form>
       </div>
@@ -504,23 +510,23 @@
 <script type="importmap">
 {
   "imports": {
-      "./js/main.js": "./js/main.js?v=14",
-      "./js/game.js": "./js/game.js?v=14",
-      "./js/sim.js": "./js/sim.js?v=14",
-      "./js/render.js": "./js/render.js?v=14",
-      "./js/palette.js": "./js/palette.js?v=14",
-      "./js/constants.js": "./js/constants.js?v=14",
-      "./js/audio.js": "./js/audio.js?v=14",
-      "./js/ui.js": "./js/ui.js?v=14",
-      "./js/net.js": "./js/net.js?v=14",
-      "./js/rng.js": "./js/rng.js?v=14",
-      "./js/config.js": "./js/config.js?v=14",
-      "./js/install.js": "./js/install.js?v=14",
-      "./js/biometric.js": "./js/biometric.js?v=14",
-      "./js/push.js": "./js/push.js?v=14"
+      "./js/main.js": "./js/main.js?v=16",
+      "./js/game.js": "./js/game.js?v=16",
+      "./js/sim.js": "./js/sim.js?v=16",
+      "./js/render.js": "./js/render.js?v=16",
+      "./js/palette.js": "./js/palette.js?v=16",
+      "./js/constants.js": "./js/constants.js?v=16",
+      "./js/audio.js": "./js/audio.js?v=16",
+      "./js/ui.js": "./js/ui.js?v=16",
+      "./js/net.js": "./js/net.js?v=16",
+      "./js/rng.js": "./js/rng.js?v=16",
+      "./js/config.js": "./js/config.js?v=16",
+      "./js/install.js": "./js/install.js?v=16",
+      "./js/biometric.js": "./js/biometric.js?v=16",
+      "./js/push.js": "./js/push.js?v=16"
   }
 }
 </script>
-<script type="module" src="js/main.js?v=14"></script>
+<script type="module" src="js/main.js?v=16"></script>
 </body>
 </html>

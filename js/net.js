@@ -669,9 +669,16 @@ export function generaCodiceRecupero() {
   return out; // es. ABCD-EFGH-JKMN-PQRS
 }
 
+// La normalizzazione sta QUI e in nessun altro posto, ed è il motivo per cui
+// esiste questa funzione. Prima la registrazione calcolava l'impronta del
+// codice con i trattini ("ABCD-EFGH-...") e il recupero la calcolava senza:
+// due impronte diverse dello stesso codice, che non combaciavano mai. Il
+// recupero del PIN non poteva riuscire a nessuno.
+// Effetto collaterale voluto: il codice si può digitare come si vuole —
+// con trattini, senza, in minuscolo, con spazi in mezzo.
 async function impronta(testo) {
-  const dati = new TextEncoder().encode(testo.trim().toUpperCase());
-  const buf = await crypto.subtle.digest('SHA-256', dati);
+  const pulito = String(testo).replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pulito));
   return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
@@ -699,7 +706,7 @@ export async function recuperaPin(nick, codice, nuovoPin) {
     const c = await client();
     const { data, error } = await c.rpc('reset_pin_with_code', {
       p_nick: nick.trim(),
-      p_code_hash: await impronta(codice.replace(/[^A-Za-z0-9]/g, '')),
+      p_code_hash: await impronta(codice),   // normalizza da sé: vedi impronta()
       p_password: pinToPassword(nuovoPin),
     });
     if (error) throw error;

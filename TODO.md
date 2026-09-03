@@ -55,10 +55,18 @@ Ordinate per urgenza: la P0 blocca l'invito agli amici, il resto no.
       Turnstile) da Authentication → Settings. **Attenzione**: attivandolo lì, tutti
       i form devono spedire il token, altrimenti nessuno riesce più a entrare. Non
       accenderlo senza dirmelo: va fatto in un colpo solo su gioco e admin.
-- [ ] **Provare il recupero PIN per intero** dopo aver eseguito lo SQL: registrare
-      un account di prova, salvare il codice, uscire, rimettere il PIN col codice.
-      Di questo percorso ho potuto verificare solo interfaccia, generatore di codici
-      e messaggi d'errore: il giro completo richiede le funzioni installate.
+- [x] ~~Recupero PIN: trovato e corretto un difetto che lo rendeva impossibile~~ —
+      la registrazione calcolava l'impronta del codice **con** i trattini
+      (`ABCD-EFGH-...`), il recupero la calcolava **senza**. Due impronte diverse
+      dello stesso codice: non avrebbero mai combaciato, e nessuno sarebbe mai
+      rientrato. Ora la normalizzazione sta dentro `impronta()`, in un posto solo,
+      e il codice si può digitare come si vuole. Resta da provare il giro completo
+      dopo aver eseguito lo SQL.
+- [ ] **Codice di recupero via email.** Oggi il codice si vede una volta sola alla
+      registrazione: chi non lo salva resta fuori. Mandarlo per email richiede
+      qualcosa che spedisca, e un sito statico non spedisce niente. La strada è una
+      Edge Function di Supabase (nickname → cerca l'email in `contatti` → genera il
+      codice, ne salva l'impronta, manda il messaggio). Serve prima l'SMTP.
 - [ ] **Cancellare `test_profilo`**, l'account con cui ho provato la scheda. Ha
       zero punti, quindi non compare in classifica e non disturba nessuno. Dopo
       aver eseguito lo SQL puoi cancellarlo **dall'app stessa**, che è anche il

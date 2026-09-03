@@ -86,6 +86,70 @@ export async function attiva() {
   }
 }
 
+// Chiede il permesso e basta, senza iscrivere. Serve alla registrazione: lì
+// l'iscrizione non si potrebbe ancora salvare, perché l'account non esiste, ma
+// il permesso va chiesto PRIMA di creare l'account. Altrimenti chi rifiuta si
+// ritroverebbe con un account che non può usare, e noi con una riga in più nel
+// database che non serve a nessuno.
+//
+// `esente: true` distingue "ha detto di no" da "non gliel'abbiamo nemmeno
+// potuto chiedere" (iPhone non installato, browser senza push, pagina non
+// sicura). Sono due cose diverse e vanno trattate in modo diverso: la prima è
+// una risposta, la seconda un limite del dispositivo.
+export async function chiediPermesso() {
+  if (!supportate()) return { ok: false, esente: true, motivo: 'non_disponibili' };
+  if (Notification.permission === 'granted') return { ok: true };
+  if (Notification.permission === 'denied') return { ok: false, motivo: 'negato' };
+  segnaChiesto();
+  try {
+    const esito = await Notification.requestPermission();
+    if (esito === 'granted') return { ok: true };
+    return { ok: false, motivo: esito === 'denied' ? 'negato' : 'ignorato' };
+  } catch (e) {
+    // Se la richiesta non parte nemmeno, la colpa non è di chi sta davanti allo
+    // schermo: si lascia passare.
+    return { ok: false, esente: true, motivo: 'errore' };
+  }
+}
+
+// Come si riaccendono dopo un rifiuto. Dopo un "no" il browser non ripropone
+// più la finestra, mai: l'unica strada sono le impostazioni, e senza istruzioni
+// precise non le trova nessuno. Questa funzione è ciò che rende un blocco
+// accettabile — una porta chiusa con la chiave appesa accanto.
+export function comeRiattivare() {
+  const ua = navigator.userAgent;
+  const iOS = /iPad|iPhone|iPod/.test(ua) ||
+              (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  if (iOS) {
+    return {
+      dove: 'iPhone',
+      passi: [
+        'Apri le Impostazioni del telefono',
+        'Scorri l\'elenco delle app e tocca Beeppy',
+        'Tocca Notifiche e attiva "Consenti notifiche"',
+      ],
+    };
+  }
+  if (/Android/.test(ua)) {
+    return {
+      dove: 'Android',
+      passi: [
+        'Tocca il lucchetto accanto all\'indirizzo, in alto',
+        'Apri "Autorizzazioni"',
+        'Metti Notifiche su "Consenti"',
+      ],
+    };
+  }
+  return {
+    dove: 'questo browser',
+    passi: [
+      'Clicca il lucchetto accanto all\'indirizzo',
+      'Cerca la voce "Notifiche"',
+      'Scegli "Consenti", poi ricarica la pagina',
+    ],
+  };
+}
+
 export async function disattiva() {
   if (!supportate()) return { ok: true };
   try {
