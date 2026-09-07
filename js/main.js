@@ -58,6 +58,37 @@ let nCampioni = 0;
 let riscaldamento = 45;    // fotogrammi buttati via all'avvio
 let precedente = 0;
 
+// Isteresi e conferma, e non sono prudenza eccessiva: senza, questo tetto
+// PEGGIORA le cose invece di migliorarle.
+//
+// La prima versione ricalcolava `salta` a ogni finestra piena, con una soglia
+// secca a 100 Hz. Un iPhone da 120 Hz che si scalda non scende in modo
+// regolare: oscilla. Simulato, un telefono che ballonzola attorno ai 100 Hz
+// cambiava regime 28 volte al minuto, cioe' ogni due secondi, e ogni cambio
+// dimezzava o raddoppiava i fotogrammi disegnati (100 fps <-> 50 fps). Non e'
+// un rallentamento, e' uno scatto ogni due secondi che compare quando il
+// telefono si e' scaldato: dopo un minuto di gioco.
+//
+// Tre regole, tutte nate da quel guasto:
+//  1. Si inizia a saltare solo da 115 Hz in su, ben lontano da qualunque
+//     schermo reale a 90 o 100 Hz.
+//  2. Non si scende mai sotto i 58 fps disegnati, per nessun motivo.
+//  3. Saltare di piu' richiede DUE finestre d'accordo; tornare a disegnare
+//     tutto e' immediato. Sbagliare verso "disegna di piu'" costa batteria,
+//     sbagliare verso "disegna di meno" costa fluidita': non sono simmetrici.
+const SOGLIA_SU = 115;     // Hz sotto i quali non si salta niente
+const FPS_MINIMI = 58;     // mai meno di cosi', disegnati
+let desiderato = 1;
+let conferme = 0;
+
+// Quanti fotogrammi saltare a questa frequenza.
+export function saltoPerFrequenza(hz) {
+  if (hz < SOGLIA_SU) return 1;
+  let t = Math.max(2, Math.floor(hz / 60 + 0.05));
+  while (t > 1 && hz / t < FPS_MINIMI) t--;
+  return t;
+}
+
 function misuraSchermo(now) {
   if (riscaldamento > 0) { riscaldamento--; precedente = now; return; }
   if (precedente) {
@@ -70,11 +101,57 @@ function misuraSchermo(now) {
 
   const ordinati = Array.from(intervalli).sort((a, b) => a - b);
   const hz = 1000 / ordinati[CAMPIONI >> 1];
-  // Sotto i 100 Hz non si tocca niente: su uno schermo a 90 Hz saltare un
-  // fotogramma su due darebbe 45 fps, cioe' peggio di non fare nulla.
-  // Il +0.05 e' tolleranza sui decimali: la mediana di uno schermo a 240 Hz esce
-  // 239,99, e senza margine floor() darebbe 3 invece di 4.
-  salta = hz >= 100 ? Math.max(2, Math.floor(hz / 60 + 0.05)) : 1;
+  const voluto = saltoPerFrequenza(hz);
+
+  if (voluto < salta) {          // disegnare di piu': subito, senza discutere
+    salta = voluto;
+    desiderato = voluto;
+    conferme = 0;
+    return;
+  }
+  if (voluto > salta) {          // disegnare di meno: serve conferma
+    if (voluto === desiderato) conferme++;
+    else { desiderato = voluto; conferme = 1; }
+    if (conferme >= 2) { salta = voluto; conferme = 0; }
+    return;
+  }
+  desiderato = salta;
+  conferme = 0;
+}
+
+// ---------------------------------------------------------- diagnostica
+//
+// Si accende aggiungendo ?diag all'indirizzo. Esiste perche' il rallentamento
+// segnalato dai giocatori capita su telefoni che non ho: continuare a
+// ipotizzare a distanza e' come curare senza visitare. Con questa, chi rallenta
+// puo' leggermi i numeri veri.
+//
+// Fuori dalla diagnostica costa un solo confronto booleano per fotogramma.
+const DIAG = location.search.indexOf('diag') >= 0;
+let pannello = null;
+const tempi = [];
+let ultimoAggiornamento = 0;
+
+function diagnostica(now, inizioDisegno) {
+  tempi.push(performance.now() - inizioDisegno);
+  if (now - ultimoAggiornamento < 500) return;
+  ultimoAggiornamento = now;
+  if (!pannello) {
+    pannello = document.createElement('div');
+    pannello.style.cssText = 'position:fixed;left:6px;bottom:6px;z-index:99;' +
+      'background:rgba(20,16,12,0.86);color:#ffd569;font:700 12px/1.45 ui-monospace,Menlo,monospace;' +
+      'padding:7px 10px;border-radius:9px;white-space:pre;pointer-events:none';
+    document.body.appendChild(pannello);
+  }
+  const ord = tempi.slice().sort((a, b) => a - b);
+  const mediana = ord[ord.length >> 1] || 0;
+  const peggiore = ord[ord.length - 1] || 0;
+  const fps = tempi.length * 2;   // mezzo secondo di campioni
+  tempi.length = 0;
+  pannello.textContent =
+    `${fps} fps disegnati   salta ${salta}\n` +
+    `disegno ${mediana.toFixed(1)} ms  peggiore ${peggiore.toFixed(1)} ms\n` +
+    `punti ${game.sim.score}  particelle ${game.particelleVive}`;
 }
 
 let contatore = 0;
@@ -90,9 +167,11 @@ function frame(now) {
 
   const dt = (now - last) / 1000;
   last = now;
+  const inizioDisegno = DIAG ? performance.now() : 0;
   try {
     game.update(dt);
     renderer.draw(game);
+    if (DIAG) diagnostica(now, inizioDisegno);
   } catch (e) {
     if (!loggedError) {
       loggedError = true;

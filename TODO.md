@@ -168,6 +168,24 @@ cancellazione dell'account, con doppia conferma.
 
 ### Fatte dall'analisi tecnica (3 settembre 2026)
 
+- [x] ~~Il tetto ai 60 fps faceva oscillare il regime~~ — difetto **introdotto
+      da me** nella versione 19, e seconda causa del rallentamento segnalato.
+      `salta` veniva ricalcolato a ogni finestra con una soglia secca a 100 Hz e
+      nessuna isteresi. Un iPhone da 120 Hz che si scalda non scende in modo
+      regolare: ballonzola. Simulato attorno ai 115 Hz, cambiava regime **30
+      volte in 120 secondi** — uno scatto ogni quattro secondi, che compariva
+      quando il telefono si era scaldato, cioè dopo circa un minuto di gioco.
+      Ora: si inizia a saltare solo da 115 Hz, mai sotto i 58 fps disegnati, e
+      saltare di più richiede due finestre d'accordo mentre tornare a disegnare
+      tutto è immediato (sbagliare verso "disegna di più" costa batteria,
+      sbagliare verso "disegna di meno" costa fluidità: non sono simmetrici).
+      `scripts/check-fps.js` ora prova anche gli schermi instabili e **boccia**
+      la logica vecchia.
+- [x] ~~Diagnostica a richiesta~~ — `?diag` in fondo all'indirizzo mostra fps
+      disegnati, tempo di disegno mediano e peggiore, regime e particelle vive.
+      Serve perché i telefoni che rallentano non li ho: senza numeri veri si
+      cura a distanza.
+
 - [x] ~~«Superati i 70 inizia a laggare»~~ — **perdita di nodi audio**, trovata
       misurando invece che indovinando. Simulazione: 840 ns per passo a
       qualsiasi punteggio, piatta. Rendering: piatto, tronchi sempre 3 in
