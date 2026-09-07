@@ -143,3 +143,38 @@ L'unica leva è chiedere nel momento giusto, con una ragione comprensibile.
 
 Finché mancano, il lavoro programmato gira a vuoto e scrive nel registro cosa
 avrebbe mandato: si può guardare senza rischiare di svegliare nessuno.
+
+
+## Trappole già pagate
+
+### PostgREST vuole le stesse chiavi in tutte le righe di un lotto
+
+Il primo invio vero è fallito così:
+
+```
+giocatori: 9, con notifiche attive: 2
+  → profilo   Mettici la faccia: ...
+push_stato: HTTP 400 {"code":"PGRST102","message":"All object keys must match"}
+```
+
+`righeStato()` costruiva **cinque** chiavi per chi aveva ricevuto una notifica
+(`user_id`, `posizione`, `tipi_inviati`, `ultima_inviata`, `ultimo_tipo`) e
+**tre** per tutti gli altri. PostgREST rifiuta un lotto in cui gli oggetti non
+hanno esattamente lo stesso insieme di chiavi.
+
+Il modo in cui si rompeva era il peggiore possibile: **le notifiche partivano
+davvero** e poi lo stato non veniva salvato. Al giro successivo lo stesso
+messaggio sarebbe ripartito identico, per sempre, perché la memoria di cosa era
+già stato mandato non veniva mai scritta.
+
+Regola: chi non riceve niente **riscrive i propri valori di prima** invece di
+ometterli. La riga deve essere completa, non parziale. Coperto da un controllo
+in `scripts/notifiche/test.js`, che verifica anche che la storia di chi non
+riceve nulla non venga azzerata.
+
+### Un test che esce a metà file non è un test
+
+Nello stesso giro è venuto fuori che `test.js` aveva un `process.exit()` in
+mezzo al file: tutto ciò che veniva aggiunto dopo non veniva **mai eseguito**,
+e sembrava che ci fosse un controllo dove non c'era niente. Ora l'uscita è una
+sola, in fondo.

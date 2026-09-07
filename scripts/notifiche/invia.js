@@ -81,6 +81,9 @@ async function raccogli() {
       posizionePrecedente: prec,
       superatoDa: sopra ? nomi.get(sopra.user_id) : null,
       ultimaInviata: s.ultima_inviata ? new Date(s.ultima_inviata).getTime() : null,
+      // il valore così come sta nel database: serve per riscriverlo intatto a
+      // chi stavolta non riceve niente (vedi righeStato)
+      ultimaInviataIso: s.ultima_inviata || null,
       ultimoTipo: s.ultimo_tipo || null,
       tipiInviati: s.tipi_inviati || [],
       // il sorpasso ha un limite tutto suo: ci serve quando è arrivato l'ultimo
@@ -192,19 +195,42 @@ async function main() {
   // e non è giusto che rubino la notifica automatica di chi ne avrebbe bisogno.
   const inviati = new Set(
     messaggi.filter((m) => m.tipo !== 'annuncio').map((m) => m.user_id));
-  await scrivi('push_stato', giocatori.map((g) => {
-    const s = { user_id: g.user_id, posizione: g.posizione, tipi_inviati: g.tipiInviati };
-    if (inviati.has(g.user_id)) {
-      const tipo = (messaggi.find((m) => m.user_id === g.user_id) || {}).tipo;
-      s.ultima_inviata = adesso;
-      s.ultimo_tipo = tipo;
-      // memoria per le notifiche da mandare una volta sola
-      if (tipo && !s.tipi_inviati.includes(tipo)) s.tipi_inviati = [...s.tipi_inviati, tipo];
-    }
-    return s;
-  }), true);
+  await scrivi('push_stato', righeStato(giocatori, messaggi, inviati, adesso), true);
 
   console.log(`\ninviate: ${inviate}, iscrizioni scadute rimosse: ${scadute}`);
 }
 
-main().catch((e) => { console.error(e.message); process.exit(1); });
+// Le righe di stato da riscrivere. Fuori da main() perché il collaudo la
+// controlla: ci si è già rotta una volta.
+//
+// TUTTE le righe devono avere le STESSE chiavi, sempre. PostgREST rifiuta un
+// lotto in cui gli oggetti hanno insiemi di chiavi diversi
+// ("PGRST102: All object keys must match"), e la prima versione costruiva
+// cinque chiavi per chi aveva ricevuto una notifica e tre per gli altri. Il
+// guasto era il peggiore possibile: le notifiche partivano e poi lo stato non
+// si salvava, quindi al giro dopo ripartivano identiche.
+//
+// Per questo chi stavolta non riceve niente riscrive i propri valori di prima
+// invece di ometterli: la riga deve essere completa, non parziale.
+export function righeStato(giocatori, messaggi, inviati, adesso) {
+  return giocatori.map((g) => {
+    const suo = inviati.has(g.user_id);
+    const tipo = suo ? (messaggi.find((m) => m.user_id === g.user_id) || {}).tipo : null;
+    let tipiInviati = g.tipiInviati || [];
+    // memoria per le notifiche da mandare una volta sola
+    if (tipo && !tipiInviati.includes(tipo)) tipiInviati = [...tipiInviati, tipo];
+    return {
+      user_id: g.user_id,
+      posizione: g.posizione,
+      tipi_inviati: tipiInviati,
+      ultima_inviata: suo ? adesso : g.ultimaInviataIso,
+      ultimo_tipo: suo ? tipo : g.ultimoTipo,
+    };
+  });
+}
+
+// Eseguito solo da riga di comando, non quando il collaudo importa il modulo.
+const eseguitoDirettamente = process.argv[1] && process.argv[1].endsWith('invia.js');
+if (eseguitoDirettamente) {
+  main().catch((e) => { console.error(e.message); process.exit(1); });
+}
