@@ -168,6 +168,22 @@ cancellazione dell'account, con doppia conferma.
 
 ### Fatte dall'analisi tecnica (3 settembre 2026)
 
+- [x] ~~«Superati i 70 inizia a laggare»~~ — **perdita di nodi audio**, trovata
+      misurando invece che indovinando. Simulazione: 840 ns per passo a
+      qualsiasi punteggio, piatta. Rendering: piatto, tronchi sempre 3 in
+      memoria. Il colpevole era `env()` in `js/audio.js`, che creava un
+      `GainNode`, lo collegava a `master` e **non lo scollegava mai**: `master`
+      tiene un riferimento a ogni suo ingresso, quindi niente veniva raccolto
+      dalla memoria, e WebAudio ricalcola tutto il grafo circa 375 volte al
+      secondo. Un battito lasciava 5 nodi, un punto 4: **contati nel browser,
+      1180 nodi permanenti in una partita da 70 punti.** Il rallentamento
+      cresceva col *tempo* di gioco — il punteggio era solo l'orologio, ed è per
+      questo che sembrava cominciare "verso i 70".
+      Ora ogni suono chiama `chiudi()`, che scollega su `onended` con un timer
+      di riserva per quando il contesto è sospeso. Verificato: 1195 nodi creati,
+      1195 scollegati, zero restano. Coperto da `scripts/check-audio.js`, che
+      usa un AudioContext finto e **fallisce** se il difetto torna.
+
 - [x] ~~Tetto ai 60 fps sugli schermi veloci~~ — su ProMotion il gioco disegnava
       a 120 fps, doppio consumo per un guadagno visivo nullo. La frequenza si
       misura con la mediana degli intervalli (non la media, e non durante il
